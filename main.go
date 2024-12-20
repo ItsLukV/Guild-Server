@@ -1,15 +1,23 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"golang.org/x/exp/rand"
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Haha get ratted")
-	})
+	router := gin.Default()
+	router.LoadHTMLGlob("templates/*")
+	//router.LoadHTMLFiles("templates/template1.html", "templates/template2.html")
 
-	fmt.Println("Serving on port 5555")
-	http.ListenAndServe(":5555", nil)
+	words := []string{"It's me mario", "Meow", "LukV", "LukV", "LukV", "LukV", "LukV"}
+
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.tmpl", gin.H{
+			"title": words[rand.Intn(len(words))],
+		})
+	})
+	router.Run(":8080")
 }
