@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ItsLukV/Guild-Server/src/utils"
@@ -139,9 +140,11 @@ func main() {
 				topEntries[i].UserId = user.Id
 			}
 		}
+		i, _ := strconv.Atoi(user)
+		name := users[i].Name
 
 		c.JSON(http.StatusOK, gin.H{
-			"user":    user,
+			"user":    name,
 			"entries": topEntries,
 		})
 	})
