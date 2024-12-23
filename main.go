@@ -91,13 +91,13 @@ func main() {
 			select {
 			case <-ticker.C:
 				log.Println("Fetching data")
-				userdata = fetchData()
+				userdata := fetchData()
 				_, err = engine.Insert(userdata)
 				if err != nil {
-					log.Fatalf("Failed to insert into database: %v", err)
+					log.Printf("Failed to insert into database: %v", err)
+					continue
 				}
 				log.Println("Record inserted successfully!")
-
 			}
 		}
 	}()
@@ -114,17 +114,50 @@ func main() {
 		})
 	})
 
+	router.GET("/user/:user", func(c *gin.Context) {
+		user := c.Param("user")
+
+		var topEntries []DianaData
+		err := engine.Where("user_id = ?", user).Limit(10, 0).Find(&topEntries)
+		if err != nil {
+			log.Println("Failed to fetch top 10 entries: ", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"message": "Failed to fetch data",
+			})
+			return
+		}
+
+		// After fetching DianaData, load the associated User
+		for i, entry := range topEntries {
+			var user User
+			has, err := engine.ID(entry.UserId).Get(&user)
+			if err != nil {
+				log.Println("Failed to load user data: ", err)
+				continue
+			}
+			if has {
+				topEntries[i].UserId = user.Id
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"user":    user,
+			"entries": topEntries,
+		})
+	})
+
 	router.Run(":8080")
 
 }
 
 type User struct {
-	Name string `xorm:"varchar(255) pk notnull" json:"name"`
+	Id   int    `xorm:"INT pk notnull autoincr" json:"id"`
+	Name string `xorm:"varchar(255) notnull" json:"name"`
 }
 
 type DianaData struct {
-	id              string    `xorm:"varchar(255) pk notnull" json:"id"`
-	User            string    `xorm:"index notnull" json:"user"`
+	id              int       `xorm:"varchar(255) pk notnull" json:"id" autoincr`
+	UserId          int       `xorm:"index notnull" json:"user"`
 	FetchTime       time.Time `xorm:"created notnull" json:"fetch_time"`
 	BurrowsTreasure float32   `xorm:"INT notnull" json:"burrows_treasure"`
 	BurrowsCombat   float32   `xorm:"INT notnull" json:"burrows_combat"`
@@ -138,7 +171,7 @@ type DianaData struct {
 
 func fetchData() []DianaData {
 	out := make([]DianaData, 0)
-	for _, user := range users {
+	for index, user := range users {
 		uuid, err := utils.GetMCUUID(user.Name)
 		if err != nil {
 			log.Println("Failed to fetch api: ", err)
@@ -154,7 +187,7 @@ func fetchData() []DianaData {
 			log.Println("Failed to fetch api: ", err)
 		}
 		dianaData := DianaData{
-			User:            user.Name,
+			UserId:          index,
 			BurrowsTreasure: 0,
 			BurrowsCombat:   0,
 			GaiaConstruct:   0,
