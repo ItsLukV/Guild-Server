@@ -85,7 +85,7 @@ func main() {
 
 	// Start a background Goroutine to fetch data every hour
 	go func() {
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
 		for {
 			select {
