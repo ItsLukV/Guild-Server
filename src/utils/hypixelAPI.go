@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/ItsLukV/Guild-Server/src/app"
 )
 
 // -----------------------------------------------
@@ -35,7 +37,7 @@ type SkyblockProfileMemberData struct {
 	ItemData               interface{}              `json:"item_data"`
 	JacobsContest          interface{}              `json:"jacobs_contest"`
 	Currencies             interface{}              `json:"currencies"`
-	Dungeons               interface{}              `json:"dungeons"`
+	Dungeons               SkyblockDungeons         `json:"dungeons"`
 	Profile                interface{}              `json:"profile"`
 	PetsData               interface{}              `json:"pets_data"`
 	PlayerId               string                   `json:"player_id"`
@@ -134,6 +136,59 @@ type MythosBurrowsDugTreasure struct {
 type MythosBurrowsDugCombat struct {
 	TotalBurrows float32 `json:"total"`
 	Legendary    float32 `json:"LEGENDARY"`
+}
+
+type SkyblockDungeons struct {
+	DungeonTypes           map[string]DungeonTypes `json:"dungeon_types"`
+	PlayerClasses          PlayerClasses           `json:"player_classes"`
+	DungeonJournal         interface{}             `json:"dungeon_journal"`
+	DungeonsBlahBlah       interface{}             `json:"dungeons_blah_blah"`
+	SelectedDungeonClass   string                  `json:"selected_dungeon_class"`
+	DailyRuns              interface{}             `json:"daily_runs"`
+	Treasures              interface{}             `json:"treasures"`
+	DungeonHubRaceSettings interface{}             `json:"dungeon_hub_race_settings"`
+	LastDungeonRun         string                  `json:"last_dungeon_run"`
+	Secrets                int                     `json:"secrets"`
+}
+
+type DungeonTypes struct {
+	TimesPlayed          interface{}        `json:"times_played"`
+	Experience           float64            `json:"experience"`
+	TierCompletions      map[string]float32 `json:"tier_completions"`
+	FastestTime          interface{}        `json:"fastest_time"`
+	BestRuns             interface{}        `json:"best_runs"`
+	BestScore            interface{}        `json:"best_score"`
+	MobsKilled           interface{}        `json:"mobs_killed"`
+	MostMobsKilled       interface{}        `json:"most_mobs_killed"`
+	MostDamageBerserk    interface{}        `json:"most_damage_berserk"`
+	MostHealing          interface{}        `json:"most_healing"`
+	WatcherKills         interface{}        `json:"watcher_kills"`
+	HighestTierCompleted int                `json:"highest_tier_completed"`
+	FastestTimeS         interface{}        `json:"fastest_time_s"`
+	MostDamageArcher     interface{}        `json:"most_damage_archer"`
+	FastestTimeSPlus     interface{}        `json:"fastest_time_s_plus"`
+	MostDamageMage       interface{}        `json:"most_damage_mage"`
+	MilestoneCompletions interface{}        `json:"milestone_completions"`
+	MostDamageHealer     interface{}        `json:"most_damage_healer"`
+	MostDamageTank       interface{}        `json:"most_damage_tank"`
+}
+
+type PlayerClasses struct {
+	Healer struct {
+		Experience float64 `json:"experience"`
+	} `json:"healer"`
+	Mage struct {
+		Experience float64 `json:"experience"`
+	} `json:"mage"`
+	Berserk struct {
+		Experience float64 `json:"experience"`
+	} `json:"berserk"`
+	Archer struct {
+		Experience float64 `json:"experience"`
+	} `json:"archer"`
+	Tank struct {
+		Experience float64 `json:"experience"`
+	} `json:"tank"`
 }
 
 // -----------------------------------------------
@@ -243,4 +298,70 @@ func fetchApi[T interface{}](url string) (*T, error) {
 	}
 
 	return &data, nil
+}
+
+func IntoDianaData(data SkyblockPlayerData, userId int, uuid *McUUID) app.DianaData {
+	dianaData := app.DianaData{
+		UserId:          userId,
+		BurrowsTreasure: 0,
+		BurrowsCombat:   0,
+		GaiaConstruct:   0,
+		MinosChampion:   0,
+		MinosHunter:     0,
+		MinosInquisitor: 0,
+		Minotaur:        0,
+		SiameseLynx:     0,
+	}
+
+	kills := data.Profile.Members[uuid.Id].Bestiary.Kills
+
+	dianaData.GaiaConstruct = kills.GaiaConstruct
+	dianaData.MinosChampion = kills.MinosChampion
+	dianaData.MinosHunter = kills.MinosHunter
+	dianaData.MinosInquisitor = kills.MinosInquisitor
+	dianaData.Minotaur = kills.Minotaur
+	dianaData.SiameseLynx = kills.SiameseLynx
+
+	burrowData := data.Profile.Members[uuid.Id].PlayerStats.Mythos
+
+	dianaData.BurrowsCombat = burrowData.BurrowsDugCombat.Legendary
+	dianaData.BurrowsTreasure = burrowData.BurrowsDugTreasure.Legendary
+
+	return dianaData
+}
+
+func IntoDungeonsData(data SkyblockPlayerData, userId int, uuid *McUUID) app.DungeonsData {
+	dungeonApiData := data.Profile.Members[uuid.Id].Dungeons
+	playerClass := dungeonApiData.PlayerClasses
+	return app.DungeonsData{
+		UserId:     userId,
+		Experience: dungeonApiData.DungeonTypes["catacombs"].Experience,
+		Completions: map[string]float32{
+			"0": dungeonApiData.DungeonTypes["catacombs"].TierCompletions["0"],
+			"1": dungeonApiData.DungeonTypes["catacombs"].TierCompletions["1"],
+			"2": dungeonApiData.DungeonTypes["catacombs"].TierCompletions["2"],
+			"3": dungeonApiData.DungeonTypes["catacombs"].TierCompletions["3"],
+			"4": dungeonApiData.DungeonTypes["catacombs"].TierCompletions["4"],
+			"5": dungeonApiData.DungeonTypes["catacombs"].TierCompletions["5"],
+			"6": dungeonApiData.DungeonTypes["catacombs"].TierCompletions["6"],
+			"7": dungeonApiData.DungeonTypes["catacombs"].TierCompletions["7"],
+		},
+		MasterCompletions: map[string]float32{
+			"1": dungeonApiData.DungeonTypes["master_catacombs"].TierCompletions["1"],
+			"2": dungeonApiData.DungeonTypes["master_catacombs"].TierCompletions["2"],
+			"3": dungeonApiData.DungeonTypes["master_catacombs"].TierCompletions["3"],
+			"4": dungeonApiData.DungeonTypes["master_catacombs"].TierCompletions["4"],
+			"5": dungeonApiData.DungeonTypes["master_catacombs"].TierCompletions["5"],
+			"6": dungeonApiData.DungeonTypes["master_catacombs"].TierCompletions["6"],
+			"7": dungeonApiData.DungeonTypes["master_catacombs"].TierCompletions["7"],
+		},
+		ClassXp: map[string]float64{
+			"healer":  playerClass.Healer.Experience,
+			"mage":    playerClass.Mage.Experience,
+			"berserk": playerClass.Berserk.Experience,
+			"archer":  playerClass.Archer.Experience,
+			"tank":    playerClass.Tank.Experience,
+		},
+		Secrets: dungeonApiData.Secrets,
+	}
 }

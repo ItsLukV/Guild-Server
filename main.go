@@ -3,221 +3,153 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
-	"os"
-	"strconv"
 	"time"
 
+	"github.com/ItsLukV/Guild-Server/src/app"
+	"github.com/ItsLukV/Guild-Server/src/controllers"
 	"github.com/ItsLukV/Guild-Server/src/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"golang.org/x/exp/rand"
 	"xorm.io/xorm"
-	"xorm.io/xorm/names"
 )
 
-var engine *xorm.Engine
+var appData = app.App{
+	Users: make([]app.User, 0),
+}
 
-// Test users
-var users []User = []User{
-	{
-		Name: "LukV",
-	},
-	{
-		Name: "flyingshepfan_69",
-	},
-	{
-		Name: "22um",
-	},
-	{
-		Name: "stepjeppe",
-	},
-	{
-		Name: "emilmz",
-	},
+var controller controllers.Controller
+
+func init() {
+
+	// Load environment variables
+	if err := godotenv.Load(".env"); err != nil {
+		log.Println("Error loading .env file")
+	}
 }
 
 func main() {
-
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("Error loading .env file")
-	}
-
-	// Initialize connection string
-	connStr := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASS"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_SSLMODE"),
-	)
-
-	// Initialize XORM engine
 	var err error
-	engine, err = xorm.NewEngine("postgres", connStr)
+	appData.Engine, err = app.SyncDatabase(&appData.Users) // app.SyncDatabase returns *xorm.Engine
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		log.Fatalf("Failed to sync database: %v", err)
 	}
-	defer engine.Close()
+	defer appData.Engine.Close()
 
-	// Use snake_case mapper for table and column names
-	engine.SetMapper(names.SnakeMapper{})
-
-	// Sync the `test` struct with the database schema
-	err = engine.Sync(new(User))
-	if err != nil {
-		log.Fatalf("Failed to sync database schema: %v", err)
-	}
-	err = engine.Sync(new(DianaData))
-	if err != nil {
-		log.Fatalf("Failed to sync database schema: %v", err)
-	}
-
-	userdata := fetchData()
-	_, err = engine.Insert(userdata)
-	if err != nil {
-		log.Fatalf("Failed to insert into database: %v", err)
-	}
-	log.Println("Record inserted successfully!")
+	controller = *controllers.NewController(&appData)
 
 	// Start a background Goroutine to fetch data every hour
-	go func() {
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				log.Println("Fetching data")
-				userdata := fetchData()
-				_, err = engine.Insert(userdata)
-				if err != nil {
-					log.Printf("Failed to insert into database: %v", err)
-					continue
-				}
-				log.Println("Record inserted successfully!")
-			}
-		}
-	}()
+	go startDataFetcher()
 
 	router := gin.Default()
 	router.LoadHTMLGlob("templates/*")
 	//router.LoadHTMLFiles("templates/template1.html", "templates/template2.html")
 
-	words := []string{"It's me mario", "Meow", "LukV", "LukV", "LukV", "LukV", "LukV"}
+	router.GET("/", controller.GetDefault)
 
-	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"title": words[rand.Intn(len(words))],
-		})
-	})
+	api := router.Group("/api")
 
-	router.GET("/user/:user", func(c *gin.Context) {
-		user := c.Param("user")
+	api.GET("/users", controller.GetUsers)
+	api.POST("/users", controller.PostUsers)
 
-		var topEntries []DianaData
-		err := engine.Where("user_id = ?", user).Limit(10, 0).Find(&topEntries)
-		if err != nil {
-			log.Println("Failed to fetch top 10 entries: ", err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": "Failed to fetch data",
-			})
-			return
-		}
+	api.GET("/diana/:user", controller.GetDiana)
+	api.GET("/dungeons/:user", controller.GetDungeonsData)
 
-		// After fetching DianaData, load the associated User
-		for i, entry := range topEntries {
-			var user User
-			has, err := engine.ID(entry.UserId).Get(&user)
-			if err != nil {
-				log.Println("Failed to load user data: ", err)
-				continue
+	if err := router.Run(":8080"); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+func startDataFetcher() {
+	/*
+		now := time.Now()
+		nextHour := now.Truncate(time.Hour).Add(time.Hour)
+		timeUntilNextHour := time.Until(nextHour)
+
+		// Sleep until the next hour
+		time.Sleep(timeUntilNextHour)
+	*/
+
+	// Start the ticker
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			log.Println("Fetching data")
+			dianaData, dungeonsData := FetchData(appData.Users)
+
+			session := appData.Engine.NewSession()
+			defer session.Close()
+
+			// Begin transaction
+			if err := session.Begin(); err != nil {
+				log.Printf("Failed to start transaction: %v", err)
+				return
 			}
-			if has {
-				topEntries[i].UserId = user.Id
+
+			// Insert data for Diana
+			if len(dianaData) > 0 {
+				if err := insertData(session, dianaData, "Diana"); err != nil {
+					log.Printf("Error inserting Diana data: %v", err)
+					_ = session.Rollback()
+					continue
+				}
+			}
+
+			// Insert data for Dungeons
+			if len(dungeonsData) > 0 {
+				if err := insertData(session, dungeonsData, "Dungeons"); err != nil {
+					log.Printf("Error inserting Dungeons data: %v", err)
+					_ = session.Rollback()
+					continue
+				}
+			}
+
+			// Commit transaction
+			if err := session.Commit(); err != nil {
+				log.Printf("Failed to commit transaction: %v", err)
+			} else {
+				log.Println("Data inserted successfully!")
 			}
 		}
-		i, _ := strconv.Atoi(user)
-		name := users[i].Name
-
-		c.JSON(http.StatusOK, gin.H{
-			"user":    name,
-			"entries": topEntries,
-		})
-	})
-
-	router.Run(":8080")
-
+	}
 }
 
-type User struct {
-	Id   int    `xorm:"INT pk notnull autoincr" json:"id"`
-	Name string `xorm:"varchar(255) notnull" json:"name"`
+// insertData is a helper function to insert data into the database and log any errors
+func insertData(session *xorm.Session, data interface{}, dataType string) error {
+	_, err := session.Insert(data)
+	if err != nil {
+		return fmt.Errorf("failed to insert %s data: %v", dataType, err)
+	}
+	log.Printf("%s data inserted successfully!", dataType)
+	return nil
 }
 
-type DianaData struct {
-	id              int       `xorm:"varchar(255) pk notnull" json:"id" autoincr`
-	UserId          int       `xorm:"index notnull" json:"user"`
-	FetchTime       time.Time `xorm:"created notnull" json:"fetch_time"`
-	BurrowsTreasure float32   `xorm:"INT notnull" json:"burrows_treasure"`
-	BurrowsCombat   float32   `xorm:"INT notnull" json:"burrows_combat"`
-	GaiaConstruct   int       `xorm:"INT notnull" json:"gaia_construct"`
-	MinosChampion   int       `xorm:"INT notnull" json:"minos_champion"`
-	MinosHunter     int       `xorm:"INT notnull" json:"minos_hunter"`
-	MinosInquisitor int       `xorm:"INT notnull" json:"minos_inquisitor"`
-	Minotaur        int       `xorm:"INT notnull" json:"minotaur"`
-	SiameseLynx     int       `xorm:"INT notnull" json:"siamese_lynx"`
-}
+func FetchData(users []app.User) ([]app.DianaData, []app.DungeonsData) {
+	outDiana := make([]app.DianaData, 0)
+	outDungeons := make([]app.DungeonsData, 0)
 
-func fetchData() []DianaData {
-	out := make([]DianaData, 0)
-	for index, user := range users {
+	for _, user := range users {
 		uuid, err := utils.GetMCUUID(user.Name)
 		if err != nil {
 			log.Println("Failed to fetch api: ", err)
 		}
 
-		profile, err := utils.FetchActivePlayerProfile(uuid.Id)
-		if err != nil {
-			log.Println("Failed to fetch api: ", err)
-		}
+		profile := user.ActiveProfileUUID
 
 		data, err := utils.FetchPlayerData(uuid.Id, profile)
 		if err != nil {
 			log.Println("Failed to fetch api: ", err)
 		}
-		dianaData := DianaData{
-			UserId:          index,
-			BurrowsTreasure: 0,
-			BurrowsCombat:   0,
-			GaiaConstruct:   0,
-			MinosChampion:   0,
-			MinosHunter:     0,
-			MinosInquisitor: 0,
-			Minotaur:        0,
-			SiameseLynx:     0,
-		}
-		BestiaryKillsToDianaData(&dianaData, data.Profile.Members[uuid.Id].Bestiary.Kills)
-		addMythData(&dianaData, data.Profile.Members[uuid.Id].PlayerStats.Mythos)
-		out = append(out, dianaData)
+
+		dianaData := utils.IntoDianaData(*data, user.Id, uuid)
+		outDiana = append(outDiana, dianaData)
+
+		dungeonsData := utils.IntoDungeonsData(*data, user.Id, uuid)
+		outDungeons = append(outDungeons, dungeonsData)
+
 	}
-	return out
-}
-
-func BestiaryKillsToDianaData(dianaData *DianaData, kills utils.BestiaryKills) {
-
-	dianaData.GaiaConstruct = kills.GaiaConstruct
-	dianaData.MinosChampion = kills.MinosChampion
-	dianaData.MinosHunter = kills.MinosHunter
-	dianaData.MinosInquisitor = kills.MinosInquisitor
-	dianaData.Minotaur = kills.Minotaur
-	dianaData.SiameseLynx = kills.SiameseLynx
-}
-
-func addMythData(dianaData *DianaData, data utils.SkyblockMythos) {
-	dianaData.BurrowsCombat = data.BurrowsDugCombat.Legendary
-	dianaData.BurrowsTreasure = data.BurrowsDugTreasure.Legendary
+	return outDiana, outDungeons
 }
