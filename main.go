@@ -7,6 +7,7 @@ import (
 
 	"github.com/ItsLukV/Guild-Server/src/app"
 	"github.com/ItsLukV/Guild-Server/src/controllers"
+	"github.com/ItsLukV/Guild-Server/src/middleware"
 	"github.com/ItsLukV/Guild-Server/src/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -21,7 +22,6 @@ var appData = app.App{
 var controller controllers.Controller
 
 func init() {
-
 	// Load environment variables
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println("Error loading .env file")
@@ -49,9 +49,12 @@ func main() {
 
 	api := router.Group("/api")
 
+	// Apply the TokenAuthMiddleware to all routes in this group
+	api.Use(middleware.TokenAuthMiddleware(&appData))
+
+	// Define the routes in this group
 	api.GET("/users", controller.GetUsers)
 	api.POST("/users", controller.PostUsers)
-
 	api.GET("/diana/:user", controller.GetDiana)
 	api.GET("/dungeons/:user", controller.GetDungeonsData)
 
