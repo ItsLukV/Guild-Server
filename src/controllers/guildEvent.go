@@ -11,11 +11,12 @@ import (
 	"github.com/ItsLukV/Guild-Server/src/app"
 	"github.com/gin-gonic/gin"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"xorm.io/xorm"
 )
 
 func (con *Controller) CreateGuildEvent(c *gin.Context) {
 	// TODO check if player is the db.
-	// TODO check if guild evnet is already created.
+	// TODO check if guild event is already created.
 
 	var request struct {
 		Users     []string           `json:"users" binding:"required"`
@@ -30,6 +31,7 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 		return
 	}
 
+	// Check if guild has a known event type
 	guildTypes := []app.GuildEventType{app.Dungeons, app.Diana}
 
 	if !slices.Contains(guildTypes, request.Type) {
@@ -37,12 +39,14 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 		return
 	}
 
+	// Check if the user is in db
 	if request.StartTime.IsZero() {
 		request.StartTime = time.Now().Truncate(time.Hour)
 	} else {
 		request.StartTime = request.StartTime.Truncate(time.Hour)
 	}
 
+	// Create a id for guild event
 	alphabet := "abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	id, err := gonanoid.Generate(alphabet, 21)
 	if err != nil {
@@ -50,6 +54,7 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 		return
 	}
 
+	// Create event
 	guildEvent := app.GuildEvent{
 		Id:        id,
 		Users:     request.Users,
@@ -59,11 +64,23 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 	}
 
 	// Insert the new guild event into the database
-	_, err = con.AppData.Engine.Insert(&guildEvent)
-	if err != nil {
-		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to insert guild event")
+	session := con.AppData.Engine.NewSession()
+	defer session.Close()
+
+	// Begin session
+	if err := session.Begin(); err != nil {
+		log.Printf("Failed to start transaction: %v", err)
 		return
 	}
+
+	_, err = session.Insert(&guildEvent)
+	if err != nil {
+		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to insert guild event")
+		session.Rollback()
+		return
+	}
+
+	session.Commit()
 
 	// Return success response
 	c.JSON(http.StatusCreated, gin.H{
@@ -73,8 +90,6 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 }
 
 func (con *Controller) GetGuildEvent(c *gin.Context) {
-	// TODO: Implement this function
-
 	type GuildEventResponse struct {
 		EventID   string             `json:"event_id"`
 		StartTime time.Time          `json:"start_time"`
@@ -84,27 +99,41 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 		EventData []app.GuildData    `json:"event_data"`
 	}
 
+	session := con.AppData.Engine.NewSession()
+	defer session.Close()
+
+	// fetch the id of guild event
 	id := c.Query("id")
 	event := app.GuildEvent{Id: id}
-	has, err := con.AppData.Engine.Get(&event)
 
+	if err := session.Begin(); err != nil {
+		log.Printf("Failed to start transaction: %v", err)
+		return
+	}
+
+	// Checking if guild exits
+	has, err := session.Get(&event)
 	if err != nil {
 		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch guild event")
+		session.Rollback()
 		return
 	}
 
 	if !has {
 		con.ErrorResponseWithUUID(c, http.StatusNotFound, nil, fmt.Sprintf("Guild event with ID %s not found", id))
+		session.Rollback()
 		return
 	}
 
 	var guildData []app.GuildData
 
+	// Getting guild data
 	switch event.Type {
 	case app.Dungeons:
-		dungeonsData, err := fetchPlayerData[app.DungeonsData](con, event)
+		dungeonsData, err := fetchPlayerData[app.DungeonsData](session, event)
 		if err != nil {
 			con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch dungeons data")
+			session.Rollback()
 			return
 		}
 
@@ -112,9 +141,10 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 			guildData = append(guildData, data)
 		}
 	case app.Diana:
-		dianaData, err := fetchPlayerData[app.DianaData](con, event)
+		dianaData, err := fetchPlayerData[app.DianaData](session, event)
 		if err != nil {
 			con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch Diana data")
+			session.Rollback()
 			return
 		}
 
@@ -122,6 +152,8 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 			guildData = append(guildData, data)
 		}
 	}
+
+	session.Commit()
 
 	// Return success response
 	guildEventResponse := GuildEventResponse{
@@ -136,14 +168,12 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, guildEventResponse)
 }
 
-func fetchPlayerData[T app.GuildData](con *Controller, event app.GuildEvent) ([]T, error) {
+func fetchPlayerData[T app.GuildData](session *xorm.Session, event app.GuildEvent) ([]T, error) {
 	records := make([]T, 0)
-
-	con.AppData.Engine.ShowSQL(true)
 
 	var err error
 	// Query for all players at the specific FetchTime.
-	err = con.AppData.Engine.
+	err = session.
 		Where("fetch_time = ?", event.StartTime.Add(time.Duration(event.Duration)*time.Hour)).
 		Find(&records)
 	if err != nil {
@@ -165,14 +195,15 @@ func fetchPlayerData[T app.GuildData](con *Controller, event app.GuildEvent) ([]
             ON d.user_id = latest.user_id AND d.fetch_time = latest.LatestFetchTime
         `, tableName, tableName)
 
-		err = con.AppData.Engine.SQL(query).Find(&records)
+		err = session.SQL(query).Find(&records)
 		if err != nil {
 			return nil, fmt.Errorf("failed to query latest records: %v", err)
 		}
 	}
 
+	// Get the records guild event start
 	startRecords := make([]T, 0)
-	err = con.AppData.Engine.Where("DATE_TRUNC('hour', fetch_time) = ?", event.StartTime).Find(&startRecords)
+	err = session.Where("DATE_TRUNC('hour', fetch_time) = ?", event.StartTime).Find(&startRecords)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query records for specific FetchTime: %v", err)
