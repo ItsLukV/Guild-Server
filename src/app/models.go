@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"time"
 
 	"xorm.io/xorm"
@@ -35,9 +36,9 @@ type APIToken struct {
 }
 
 type User struct {
-	Id                int    `xorm:"INT pk notnull autoincr" json:"id"`
-	Name              string `xorm:"varchar(255) notnull" json:"name"`
+	Id                string `xorm:"varchar(255) pk notnull" json:"Id"`
 	ActiveProfileUUID string `xorm:"varchar(255) notnull active_profile_UUID" json:"active_profile_UUID"`
+	FetchData         bool   `xorm:"notnull" json:"fetch_data"`
 }
 
 // Use a different table name for this struct
@@ -45,10 +46,15 @@ func (User) TableName() string {
 	return "users"
 }
 
+type GuildData interface {
+	GetUserID() string
+	TableName() string
+	Subtract(other GuildData) (GuildData, error)
+}
+
 type DianaData struct {
-	Id              int       `xorm:"INT pk notnull autoincr" json:"id"`
-	UserId          int       `xorm:"index notnull" json:"user"`
-	FetchTime       time.Time `xorm:"created notnull" json:"fetch_time"`
+	UserId          string    `xorm:"index notnull" json:"user"`
+	FetchTime       time.Time `xorm:"notnull" json:"fetch_time"`
 	BurrowsTreasure float32   `xorm:"DOUBLE notnull" json:"burrows_treasure"`
 	BurrowsCombat   float32   `xorm:"DOUBLE notnull" json:"burrows_combat"`
 	GaiaConstruct   int       `xorm:"INT notnull" json:"gaia_construct"`
@@ -63,10 +69,29 @@ func (DianaData) TableName() string {
 	return "diana_data"
 }
 
+func (d DianaData) GetUserID() string {
+	return d.UserId
+}
+
+func (d DianaData) Subtract(other GuildData) (GuildData, error) {
+	otherData, ok := other.(DianaData)
+	if !ok {
+		return nil, fmt.Errorf("cannot subtract different types")
+	}
+	d.BurrowsTreasure -= otherData.BurrowsTreasure
+	d.BurrowsCombat -= otherData.BurrowsCombat
+	d.GaiaConstruct -= otherData.GaiaConstruct
+	d.MinosChampion -= otherData.MinosChampion
+	d.MinosHunter -= otherData.MinosHunter
+	d.MinosInquisitor -= otherData.MinosInquisitor
+	d.Minotaur -= otherData.Minotaur
+	d.SiameseLynx -= otherData.SiameseLynx
+	return d, nil
+}
+
 type DungeonsData struct {
-	Id                int                `xorm:"INT pk notnull autoincr" json:"id"`
-	UserId            int                `xorm:"index notnull" json:"user"`
-	FetchTime         time.Time          `xorm:"created notnull" json:"fetch_time"`
+	UserId            string             `xorm:"index notnull" json:"user"`
+	FetchTime         time.Time          `xorm:"notnull" json:"fetch_time"`
 	Experience        float64            `xorm:"DOUBLE notnull" json:"experience"`
 	Completions       map[string]float32 `xorm:"json notnull" json:"completions"`
 	MasterCompletions map[string]float32 `xorm:"json notnull" json:"master_completions"`
@@ -78,14 +103,48 @@ func (DungeonsData) TableName() string {
 	return "dungeons_data"
 }
 
+func (d DungeonsData) GetUserID() string {
+	return d.UserId
+}
+
+func (d DungeonsData) Subtract(other GuildData) (GuildData, error) {
+	otherData, ok := other.(DungeonsData)
+	if !ok {
+		return nil, fmt.Errorf("cannot subtract different types")
+	}
+	d.Experience -= otherData.Experience
+	d.Secrets -= otherData.Secrets
+
+	for key, value := range otherData.Completions {
+		d.Completions[key] -= value
+	}
+
+	for key, value := range otherData.MasterCompletions {
+		d.MasterCompletions[key] -= value
+	}
+
+	for key, value := range otherData.ClassXp {
+		d.ClassXp[key] -= value
+	}
+
+	return d, nil
+}
+
 type GuildEvent struct {
-	Id        int       `xorm:"INT pk notnull autoincr" json:"id"`
-	Users     []int     `xorm:"'user_ids' json" json:""`
-	StartTime time.Time `xorm:"created notnull" json:"start_time"`
-	Duration  int       `xorm:"INT notnull" json:"duration"`
-	Type      string    `xorm:"varchar(255) not null" json:"type"`
+	Id        string         `xorm:"varchar(22) pk notnull" json:"id"`
+	Users     []string       `xorm:"text[] user_ids" json:"users"`
+	StartTime time.Time      `xorm:"notnull" json:"start_time"`
+	Duration  int            `xorm:"INT notnull" json:"duration"`
+	Type      GuildEventType `xorm:"varchar(255) not null" json:"type"`
 }
 
 func (GuildEvent) TableName() string {
 	return "guild_event"
 }
+
+type GuildEventType string
+
+const (
+	Dungeons GuildEventType = "dungeons"
+	Diana    GuildEventType = "diana"
+)

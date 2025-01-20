@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,6 +11,9 @@ import (
 )
 
 func (con *Controller) GetDiana(c *gin.Context) {
+	con.ErrorResponseWithUUID(c, http.StatusNotImplemented, fmt.Errorf("not implemented"), "This endpoint is not implemented yet")
+	return
+
 	user := c.Param("user")
 
 	var topEntries []app.DianaData
@@ -36,7 +40,7 @@ func (con *Controller) GetDiana(c *gin.Context) {
 		}
 	}
 	i, _ := strconv.Atoi(user)
-	name := (con.AppData.Users)[i].Name
+	name := (con.AppData.Users)[i].Id
 
 	c.JSON(http.StatusOK, gin.H{
 		"user":    name,

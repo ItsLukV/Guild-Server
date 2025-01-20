@@ -1,10 +1,10 @@
 package controllers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/ItsLukV/Guild-Server/src/app"
+	"github.com/ItsLukV/Guild-Server/src/utils"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/exp/rand"
 )
@@ -24,19 +24,35 @@ func (con *Controller) GetUsers(c *gin.Context) {
 }
 
 func (con *Controller) PostUsers(c *gin.Context) {
-	var newUser app.User
+	// Define a temporary struct for binding only the Uuid field
+	var input struct {
+		Uuid string `json:"uuid" binding:"required"`
+	}
 
-	// Bind JSON input to the User struct
-	if err := c.ShouldBindJSON(&newUser); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON input"})
+	// Bind JSON input to the input struct
+	if err := c.ShouldBindJSON(&input); err != nil {
+		con.ErrorResponseWithUUID(c, http.StatusBadRequest, err, "Invalid JSON input")
 		return
 	}
 
-	// Insert the new user into the database
-	affected, err := con.AppData.Engine.Insert(&newUser)
+	// Create a new User instance with only the Uuid field
+	newUser := app.User{
+		Id:        input.Uuid,
+		FetchData: true,
+	}
+
+	// Fetch the active profile UUID from the hypixel api
+	activeProfileUUID, err := utils.FetchActivePlayerProfile(newUser.Id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert user"})
-		log.Println("Failed to insert user: ", err)
+		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch active profile UUID")
+		return
+	}
+	newUser.ActiveProfileUUID = activeProfileUUID
+
+	// Insert the new user into the database
+	_, err = con.AppData.Engine.Insert(&newUser)
+	if err != nil {
+		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to insert user")
 		return
 	}
 
@@ -45,8 +61,7 @@ func (con *Controller) PostUsers(c *gin.Context) {
 
 	// Return success response
 	c.JSON(http.StatusCreated, gin.H{
-		"message":  "User created successfully",
-		"affected": affected,
-		"id":       newUser.Id,
+		"message": "User created successfully",
+		"user id": newUser.Id,
 	})
 }

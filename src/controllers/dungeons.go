@@ -10,6 +10,9 @@ import (
 )
 
 func (con *Controller) GetDungeonsData(c *gin.Context) {
+	con.ErrorResponseWithUUID(c, http.StatusNotImplemented, fmt.Errorf("not implemented"), "This endpoint is not implemented yet")
+	return
+
 	name := c.Param("user")
 
 	var dungeonData app.DungeonsData

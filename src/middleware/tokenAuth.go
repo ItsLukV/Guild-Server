@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
 	"os"
 
@@ -38,8 +37,6 @@ func ValidateToken(ctx *gin.Context, appData *app.App, service string) (string, 
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Token is required"})
 		return "", false
 	}
-
-	log.Println(defaultAdminToken)
 
 	// Check if the token is the default admin token
 	if token == defaultAdminToken {

@@ -22,6 +22,7 @@ var appData = app.App{
 var controller controllers.Controller
 
 func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	// Load environment variables
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println("Error loading .env file")
@@ -58,6 +59,9 @@ func main() {
 	api.GET("/diana/:user", controller.GetDiana)
 	api.GET("/dungeons/:user", controller.GetDungeonsData)
 
+	api.POST("/guildevent", controller.CreateGuildEvent)
+	api.GET("/guildevent", controller.GetGuildEvent)
+
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
@@ -92,7 +96,7 @@ func startDataFetcher() {
 				return
 			}
 
-			// Insert data for Diana
+			// InserUsert data for Diana
 			if len(dianaData) > 0 {
 				if err := insertData(session, dianaData, "Diana"); err != nil {
 					log.Printf("Error inserting Diana data: %v", err)
@@ -114,7 +118,7 @@ func startDataFetcher() {
 			if err := session.Commit(); err != nil {
 				log.Printf("Failed to commit transaction: %v", err)
 			} else {
-				log.Println("Data inserted successfully!")
+				log.Printf("Data inserted successfully for all users (%v)!", len(appData.Users))
 			}
 		}
 	}
@@ -135,22 +139,23 @@ func FetchData(users []app.User) ([]app.DianaData, []app.DungeonsData) {
 	outDungeons := make([]app.DungeonsData, 0)
 
 	for _, user := range users {
-		uuid, err := utils.GetMCUUID(user.Name)
-		if err != nil {
-			log.Println("Failed to fetch api: ", err)
+		if !user.FetchData {
+			continue
 		}
 
 		profile := user.ActiveProfileUUID
 
-		data, err := utils.FetchPlayerData(uuid.Id, profile)
+		data, err := utils.FetchPlayerData(user.Id, profile)
 		if err != nil {
 			log.Println("Failed to fetch api: ", err)
 		}
 
-		dianaData := utils.IntoDianaData(*data, user.Id, uuid)
+		dianaData := utils.IntoDianaData(*data, user.Id, user.Id)
+		dianaData.FetchTime = time.Now().Truncate(time.Hour)
 		outDiana = append(outDiana, dianaData)
 
-		dungeonsData := utils.IntoDungeonsData(*data, user.Id, uuid)
+		dungeonsData := utils.IntoDungeonsData(*data, user.Id, user.Id)
+		dungeonsData.FetchTime = time.Now().Truncate(time.Hour)
 		outDungeons = append(outDungeons, dungeonsData)
 
 	}

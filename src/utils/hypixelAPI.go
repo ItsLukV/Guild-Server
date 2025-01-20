@@ -300,7 +300,7 @@ func fetchApi[T interface{}](url string) (*T, error) {
 	return &data, nil
 }
 
-func IntoDianaData(data SkyblockPlayerData, userId int, uuid *McUUID) app.DianaData {
+func IntoDianaData(data SkyblockPlayerData, userId string, uuid string) app.DianaData {
 	dianaData := app.DianaData{
 		UserId:          userId,
 		BurrowsTreasure: 0,
@@ -313,7 +313,7 @@ func IntoDianaData(data SkyblockPlayerData, userId int, uuid *McUUID) app.DianaD
 		SiameseLynx:     0,
 	}
 
-	kills := data.Profile.Members[uuid.Id].Bestiary.Kills
+	kills := data.Profile.Members[uuid].Bestiary.Kills
 
 	dianaData.GaiaConstruct = kills.GaiaConstruct
 	dianaData.MinosChampion = kills.MinosChampion
@@ -322,7 +322,7 @@ func IntoDianaData(data SkyblockPlayerData, userId int, uuid *McUUID) app.DianaD
 	dianaData.Minotaur = kills.Minotaur
 	dianaData.SiameseLynx = kills.SiameseLynx
 
-	burrowData := data.Profile.Members[uuid.Id].PlayerStats.Mythos
+	burrowData := data.Profile.Members[uuid].PlayerStats.Mythos
 
 	dianaData.BurrowsCombat = burrowData.BurrowsDugCombat.Legendary
 	dianaData.BurrowsTreasure = burrowData.BurrowsDugTreasure.Legendary
@@ -330,8 +330,8 @@ func IntoDianaData(data SkyblockPlayerData, userId int, uuid *McUUID) app.DianaD
 	return dianaData
 }
 
-func IntoDungeonsData(data SkyblockPlayerData, userId int, uuid *McUUID) app.DungeonsData {
-	dungeonApiData := data.Profile.Members[uuid.Id].Dungeons
+func IntoDungeonsData(data SkyblockPlayerData, userId string, uuid string) app.DungeonsData {
+	dungeonApiData := data.Profile.Members[uuid].Dungeons
 	playerClass := dungeonApiData.PlayerClasses
 	return app.DungeonsData{
 		UserId:     userId,
