@@ -264,7 +264,7 @@ type McUUID struct {
 
 // GetMCUUID Returns the uuid of a minecraft player
 func GetMCUUID(ign string) (*McUUID, error) {
-	url := fmt.Sprintf("https://api.mojang.com/users/profiles/minecraft/%s", ign)
+	url := fmt.Sprintf("https://api.minecraftservices.com/minecraft/profile/lookup/name/%s", ign)
 	return fetchApi[McUUID](url)
 }
 
