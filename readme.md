@@ -21,5 +21,8 @@ REST api for tracking skyblock player data.
 		* Collection
 		* Worm Be
 		* Nucleus
+	* Slayer tracker
+		* Slayer xp
+		* Boss kills
 	* Xp Tracker
 	* Be tracker
