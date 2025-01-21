@@ -26,21 +26,56 @@ This returns all users in the system
 #### GET `/api/guildevent`
 This takes a guild event id as a parameter and returns a specific information about that event.
 |Name|Type|
+|id|string|
+
+**Response:**
+|Name|Type|
 |-|-|
 |event_id|string|
-|users|[]string|
+|start_time|string (ISO 8601 Date-Time)|
+|duration|int|
+|type|string("dungeons" or "diana")|
+|users_ids|[]string|
+|event_data|GuildEventData|
+#### GET `/api/guildevents`
+This returns a list of the table:
+|Name|Type|
+|-|-|
+|id|string|
+|Users|[]string|
 |start_time|string (ISO 8601 Date-Time)|
 |duration|int|
 |type|string("dungeons" or "diana")|
 |is_hidden|bool|
-#### GET `/api/guildevents`
-|Name|Type|
-|-|-|
 
 ##### This returns all guild events in the system
 ### Non Public
 #### POST `/api/users`
+|Name|Type|Required|
+|-|-|-|
+|uuid|string|true|
+
+|Name|Type|
+|-|-|
+|message|string|
+|user id|string|
 #### POST `/api/guildevent`
+**Property:**
+
+|Name|Type|Required|
+|-|-|-|
+|users|[]string|true|
+|duration|int|true|
+|type|string("dungeons" or "diana")|true|
+|start_time|string (ISO 8601 Date-Time)|false|
+|is_hidden|bool|false|
+
+**Response:**
+
+|Name|Type|
+|-|-|
+|message|string|
+|guild id|string|
 
 ## TODO
 * Fix bugs
