@@ -38,6 +38,7 @@ type APIToken struct {
 type User struct {
 	Id                string `xorm:"varchar(255) pk notnull" json:"id"`
 	ActiveProfileUUID string `xorm:"varchar(255) notnull active_profile_UUID" json:"active_profile_UUID"`
+	DiscordSnowflake  string `xorm:"varchar(255) notnull" json:"discord_snowflake"`
 	FetchData         bool   `xorm:"notnull" json:"fetch_data"`
 }
 
@@ -53,7 +54,7 @@ type GuildEventData interface {
 }
 
 type DianaData struct {
-	UserId          string    `xorm:"index notnull" json:"user"`
+	UserId          string    `xorm:"index notnull" json:"id"`
 	FetchTime       time.Time `xorm:"notnull" json:"fetch_time"`
 	BurrowsTreasure float32   `xorm:"DOUBLE notnull" json:"burrows_treasure"`
 	BurrowsCombat   float32   `xorm:"DOUBLE notnull" json:"burrows_combat"`
@@ -90,7 +91,7 @@ func (d DianaData) Subtract(other GuildEventData) (GuildEventData, error) {
 }
 
 type DungeonsData struct {
-	UserId            string             `xorm:"index notnull" json:"user"`
+	UserId            string             `xorm:"index notnull" json:"id"`
 	FetchTime         time.Time          `xorm:"notnull" json:"fetch_time"`
 	Experience        float64            `xorm:"DOUBLE notnull" json:"experience"`
 	Completions       map[string]float32 `xorm:"json notnull" json:"completions"`

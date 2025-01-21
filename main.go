@@ -51,6 +51,7 @@ func main() {
 	api := router.Group("/api")
 
 	api.GET("/users", controller.GetUsers)
+	api.GET("/user/data", controller.GetUserData)
 	api.GET("/guildevent", controller.GetGuildEvent)
 	api.GET("/guildevents", controller.GetGuildEvents)
 
@@ -59,8 +60,6 @@ func main() {
 
 	// Define the routes in this group
 	api.POST("/users", controller.PostUsers)
-	api.GET("/diana/:user", controller.GetDiana)
-	api.GET("/dungeons/:user", controller.GetDungeonsData)
 
 	api.POST("/guildevent", controller.CreateGuildEvent)
 
@@ -76,7 +75,7 @@ func startDataFetcher() {
 
 	now := time.Now()
 
-	updateTime := time.Hour
+	updateTime := time.Minute
 
 	nextHour := now.Truncate(updateTime).Add(updateTime)
 	timeUntilNextHour := time.Until(nextHour)

@@ -8,6 +8,7 @@ import (
 	"github.com/ItsLukV/Guild-Server/src/app"
 	"github.com/gin-gonic/gin"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"golang.org/x/exp/rand"
 )
 
 type Controller struct {
@@ -49,5 +50,13 @@ func (c *Controller) ErrorResponseWithUUID(ctx *gin.Context, errorCode int, err 
 
 	ctx.JSON(errorCode, gin.H{
 		"errorID": errorID,
+	})
+}
+
+func (con *Controller) GetDefault(c *gin.Context) {
+	words := []string{"It's me mario", "Meow", "LukV", "LukV", "LukV", "LukV", "LukV"}
+
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{
+		"title": words[rand.Intn(len(words))],
 	})
 }
