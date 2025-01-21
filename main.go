@@ -76,7 +76,7 @@ func startDataFetcher() {
 
 	now := time.Now()
 
-	updateTime := time.Minute
+	updateTime := time.Hour
 
 	nextHour := now.Truncate(updateTime).Add(updateTime)
 	timeUntilNextHour := time.Until(nextHour)
