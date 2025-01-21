@@ -51,6 +51,7 @@ func main() {
 	api := router.Group("/api")
 
 	api.GET("/users", controller.GetUsers)
+	api.GET("/user/data")
 	api.GET("/guildevent", controller.GetGuildEvent)
 	api.GET("/guildevents", controller.GetGuildEvents)
 
@@ -72,14 +73,16 @@ func main() {
 }
 
 func startDataFetcher() {
-	/*
-		now := time.Now()
-		nextHour := now.Truncate(time.Hour).Add(time.Hour)
-		timeUntilNextHour := time.Until(nextHour)
 
-		// Sleep until the next hour
-		time.Sleep(timeUntilNextHour)
-	*/
+	utils.InsertPlayerData(appData.Engine, appData.Users)
+
+	now := time.Now()
+	nextHour := now.Truncate(time.Hour).Add(time.Hour)
+	timeUntilNextHour := time.Until(nextHour)
+
+	// Sleep until the next hour
+	time.Sleep(timeUntilNextHour)
+
 	// Start the ticker
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
