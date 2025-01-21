@@ -128,11 +128,11 @@ func checkForMissingUsers(session *xorm.Session, users []string) ([]string, erro
 
 func (con *Controller) GetGuildEvent(c *gin.Context) {
 	type GuildEventResponse struct {
-		EventID   string               `json:"event_id"`
+		EventID   string               `json:"id"`
 		StartTime time.Time            `json:"start_time"`
 		Duration  int                  `json:"duration"`
 		Type      app.GuildEventType   `json:"type"`
-		UserIDs   []string             `json:"user_ids"`
+		UserIDs   []string             `json:"users"`
 		EventData []app.GuildEventData `json:"event_data"`
 	}
 
@@ -142,6 +142,11 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 	// fetch the id of guild event
 	id := c.Query("id")
 	event := app.GuildEvent{Id: id}
+
+	if id == "" {
+		con.ErrorResponseWithUUID(c, http.StatusBadRequest, nil, "Missing guild event ID")
+		return
+	}
 
 	if err := session.Begin(); err != nil {
 		log.Printf("Failed to start transaction: %v", err)
@@ -267,7 +272,6 @@ func fetchPlayerData[T app.GuildEventData](session *xorm.Session, event app.Guil
 
 	// Subtract the records at the start time from the latest records to get the event data
 	for i, record := range records {
-
 		log.Println("Record: ", record)
 		log.Println("StartRecord: ", startRecords[i])
 		startRecord := startRecords[i]
