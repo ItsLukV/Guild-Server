@@ -81,7 +81,7 @@ func startDataFetcher() {
 		time.Sleep(timeUntilNextHour)
 	*/
 	// Start the ticker
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 
 	for {
