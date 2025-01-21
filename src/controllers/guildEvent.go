@@ -269,3 +269,27 @@ func fetchPlayerData[T app.GuildData](session *xorm.Session, event app.GuildEven
 
 	return records, nil
 }
+
+func (con *Controller) GetGuildEvents(c *gin.Context) {
+	session := con.AppData.Engine.NewSession()
+	defer session.Close()
+
+	// Begin session
+	if err := session.Begin(); err != nil {
+		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to start transaction")
+		return
+	}
+
+	var guildEvents []app.GuildEvent
+	err := session.Find(&guildEvents)
+	if err != nil {
+		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch guild events")
+		session.Rollback()
+		return
+	}
+
+	session.Commit()
+
+	// Return success response
+	c.JSON(http.StatusOK, guildEvents)
+}

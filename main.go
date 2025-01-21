@@ -46,20 +46,21 @@ func main() {
 
 	router.GET("/", controller.GetDefault)
 
-	needToken := router.Group("/api")
+	api := router.Group("/api")
 
-	needToken.GET("/users", controller.GetUsers)
-	needToken.GET("/guildevent", controller.GetGuildEvent)
+	api.GET("/users", controller.GetUsers)
+	api.GET("/guildevent", controller.GetGuildEvent)
+	api.GET("/guildevents", controller.GetGuildEvents)
 
 	// Apply the TokenAuthMiddleware to all routes in this group
-	needToken.Use(middleware.TokenAuthMiddleware(&appData))
+	api.Use(middleware.TokenAuthMiddleware(&appData))
 
 	// Define the routes in this group
-	needToken.POST("/users", controller.PostUsers)
-	needToken.GET("/diana/:user", controller.GetDiana)
-	needToken.GET("/dungeons/:user", controller.GetDungeonsData)
+	api.POST("/users", controller.PostUsers)
+	api.GET("/diana/:user", controller.GetDiana)
+	api.GET("/dungeons/:user", controller.GetDungeonsData)
 
-	needToken.POST("/guildevent", controller.CreateGuildEvent)
+	api.POST("/guildevent", controller.CreateGuildEvent)
 
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
