@@ -21,6 +21,7 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 		Duration  int                `json:"duration" binding:"required"`
 		Type      app.GuildEventType `json:"type" binding:"required"`
 		StartTime time.Time          `json:"start_time"`
+		IsHidden  bool               `json:"is_hidden"`
 	}
 
 	// Bind JSON input to the GuildEvent struct
@@ -59,6 +60,7 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 		Duration:  request.Duration,
 		Type:      request.Type,
 		StartTime: request.StartTime,
+		IsHidden:  request.IsHidden,
 	}
 
 	// Insert the new guild event into the database
@@ -126,12 +128,12 @@ func checkForMissingUsers(session *xorm.Session, users []string) ([]string, erro
 
 func (con *Controller) GetGuildEvent(c *gin.Context) {
 	type GuildEventResponse struct {
-		EventID   string             `json:"event_id"`
-		StartTime time.Time          `json:"start_time"`
-		Duration  int                `json:"duration"`
-		Type      app.GuildEventType `json:"type"`
-		UserIDs   []string           `json:"user_ids"`
-		EventData []app.GuildData    `json:"event_data"`
+		EventID   string               `json:"event_id"`
+		StartTime time.Time            `json:"start_time"`
+		Duration  int                  `json:"duration"`
+		Type      app.GuildEventType   `json:"type"`
+		UserIDs   []string             `json:"user_ids"`
+		EventData []app.GuildEventData `json:"event_data"`
 	}
 
 	session := con.AppData.Engine.NewSession()
@@ -160,7 +162,22 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 		return
 	}
 
-	var guildData []app.GuildData
+	var guildData []app.GuildEventData
+
+	if event.IsHidden {
+		// Return success response
+		guildEventResponse := GuildEventResponse{
+			EventID:   event.Id,
+			StartTime: event.StartTime,
+			Duration:  event.Duration,
+			Type:      event.Type,
+			UserIDs:   event.Users,
+			EventData: []app.GuildEventData{},
+		}
+
+		c.JSON(http.StatusOK, guildEventResponse)
+		return
+	}
 
 	// Getting guild data
 	switch event.Type {
@@ -203,7 +220,7 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, guildEventResponse)
 }
 
-func fetchPlayerData[T app.GuildData](session *xorm.Session, event app.GuildEvent) ([]T, error) {
+func fetchPlayerData[T app.GuildEventData](session *xorm.Session, event app.GuildEvent) ([]T, error) {
 	records := make([]T, 0)
 
 	var err error
@@ -287,8 +304,12 @@ func (con *Controller) GetGuildEvents(c *gin.Context) {
 		session.Rollback()
 		return
 	}
-
 	session.Commit()
+
+	if len(guildEvents) == 0 {
+		c.JSON(http.StatusOK, make([]app.GuildEvent, 0))
+		return
+	}
 
 	// Return success response
 	c.JSON(http.StatusOK, guildEvents)

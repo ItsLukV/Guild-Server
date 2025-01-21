@@ -36,7 +36,7 @@ type APIToken struct {
 }
 
 type User struct {
-	Id                string `xorm:"varchar(255) pk notnull" json:"Id"`
+	Id                string `xorm:"varchar(255) pk notnull" json:"id"`
 	ActiveProfileUUID string `xorm:"varchar(255) notnull active_profile_UUID" json:"active_profile_UUID"`
 	FetchData         bool   `xorm:"notnull" json:"fetch_data"`
 }
@@ -46,10 +46,10 @@ func (User) TableName() string {
 	return "users"
 }
 
-type GuildData interface {
+type GuildEventData interface {
 	GetUserID() string
 	TableName() string
-	Subtract(other GuildData) (GuildData, error)
+	Subtract(other GuildEventData) (GuildEventData, error)
 }
 
 type DianaData struct {
@@ -73,7 +73,7 @@ func (d DianaData) GetUserID() string {
 	return d.UserId
 }
 
-func (d DianaData) Subtract(other GuildData) (GuildData, error) {
+func (d DianaData) Subtract(other GuildEventData) (GuildEventData, error) {
 	otherData, ok := other.(DianaData)
 	if !ok {
 		return nil, fmt.Errorf("cannot subtract different types")
@@ -107,7 +107,7 @@ func (d DungeonsData) GetUserID() string {
 	return d.UserId
 }
 
-func (d DungeonsData) Subtract(other GuildData) (GuildData, error) {
+func (d DungeonsData) Subtract(other GuildEventData) (GuildEventData, error) {
 	otherData, ok := other.(DungeonsData)
 	if !ok {
 		return nil, fmt.Errorf("cannot subtract different types")
@@ -136,6 +136,7 @@ type GuildEvent struct {
 	StartTime time.Time      `xorm:"notnull" json:"start_time"`
 	Duration  int            `xorm:"INT notnull" json:"duration"`
 	Type      GuildEventType `xorm:"varchar(255) not null" json:"type"`
+	IsHidden  bool           `xorm:"notnull" json:"is_hidden"`
 }
 
 func (GuildEvent) TableName() string {

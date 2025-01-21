@@ -40,7 +40,9 @@ func main() {
 	// Start a background Goroutine to fetch data every hour
 	go startDataFetcher()
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Logger(), gin.Recovery())
+
 	router.LoadHTMLGlob("templates/*")
 	//router.LoadHTMLFiles("templates/template1.html", "templates/template2.html")
 
@@ -64,19 +66,22 @@ func main() {
 
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	} else {
+		log.Println("Server started successfully")
 	}
 }
 
 func startDataFetcher() {
-	now := time.Now()
-	nextHour := now.Truncate(time.Hour).Add(time.Hour)
-	timeUntilNextHour := time.Until(nextHour)
+	/*
+		now := time.Now()
+		nextHour := now.Truncate(time.Hour).Add(time.Hour)
+		timeUntilNextHour := time.Until(nextHour)
 
-	// Sleep until the next hour
-	time.Sleep(timeUntilNextHour)
-
+		// Sleep until the next hour
+		time.Sleep(timeUntilNextHour)
+	*/
 	// Start the ticker
-	ticker := time.NewTicker(1 * time.Hour)
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	for {

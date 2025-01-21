@@ -11,18 +11,31 @@ import (
 
 func InsertPlayerData(engine *xorm.Engine, users []app.User) {
 	log.Println("Fetching data")
-	dianaData, dungeonsData := FetchData(users)
-
-	session := engine.NewSession()
-	defer session.Close()
 
 	// Begin transaction
+	session := engine.NewSession()
+	defer session.Close()
 	if err := session.Begin(); err != nil {
 		log.Printf("Failed to start transaction: %v", err)
 		return
 	}
 
-	// InserUsert data for Diana
+	var dianaData []app.DianaData
+	var dungeonsData []app.DungeonsData
+	for _, user := range users {
+		if !user.FetchData {
+			continue
+		}
+		dianaPlayerData, dungeonsPlayerData := FetchData(user)
+		if !hasPlayerData[app.DianaData](engine.NewSession(), user) {
+			dianaData = append(dianaData, dianaPlayerData)
+		}
+		if !hasPlayerData[app.DungeonsData](engine.NewSession(), user) {
+			dungeonsData = append(dungeonsData, dungeonsPlayerData)
+		}
+	}
+
+	// Insert data for Diana
 	if len(dianaData) > 0 {
 		if err := insertData(session, dianaData, "Diana"); err != nil {
 			log.Printf("Error inserting Diana data: %v", err)
@@ -59,30 +72,32 @@ func insertData(session *xorm.Session, data interface{}, dataType string) error 
 	return nil
 }
 
-func FetchData(users []app.User) ([]app.DianaData, []app.DungeonsData) {
-	outDiana := make([]app.DianaData, 0)
-	outDungeons := make([]app.DungeonsData, 0)
+func FetchData(user app.User) (app.DianaData, app.DungeonsData) {
+	profile := user.ActiveProfileUUID
 
-	for _, user := range users {
-		if !user.FetchData {
-			continue
-		}
-
-		profile := user.ActiveProfileUUID
-
-		data, err := FetchPlayerData(user.Id, profile)
-		if err != nil {
-			log.Println("Failed to fetch api: ", err)
-		}
-
-		dianaData := IntoDianaData(*data, user.Id, user.Id)
-		dianaData.FetchTime = time.Now().Truncate(time.Hour)
-		outDiana = append(outDiana, dianaData)
-
-		dungeonsData := IntoDungeonsData(*data, user.Id, user.Id)
-		dungeonsData.FetchTime = time.Now().Truncate(time.Hour)
-		outDungeons = append(outDungeons, dungeonsData)
-
+	data, err := FetchPlayerData(user.Id, profile)
+	if err != nil {
+		log.Println("Failed to fetch api: ", err)
 	}
-	return outDiana, outDungeons
+
+	dianaData := IntoDianaData(*data, user.Id)
+	dianaData.FetchTime = time.Now().Truncate(time.Hour)
+
+	dungeonsData := IntoDungeonsData(*data, user.Id)
+	dungeonsData.FetchTime = time.Now().Truncate(time.Hour)
+
+	return dianaData, dungeonsData
+}
+
+func hasPlayerData[T app.GuildEventData](session *xorm.Session, user app.User) bool {
+	playerData := new(T)
+	currentTime := time.Now().Truncate(time.Hour)
+
+	found, err := session.Where("user_id = ? AND fetch_time = ?", user.Id, currentTime).Get(playerData)
+	if err != nil {
+		log.Printf("Error fetching player data: %v", err)
+		return false
+	}
+
+	return found
 }
