@@ -56,6 +56,9 @@ func (con *Controller) PostUsers(c *gin.Context) {
 		return
 	}
 
+	// Insert player data for the new user
+	utils.InsertPlayerData(con.AppData.Engine, []app.User{newUser})
+
 	// Add the new user to the Users slice
 	con.AppData.Users = append(con.AppData.Users, newUser)
 

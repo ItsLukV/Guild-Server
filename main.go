@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"xorm.io/xorm"
 )
 
 var appData = app.App{
@@ -48,19 +46,20 @@ func main() {
 
 	router.GET("/", controller.GetDefault)
 
-	api := router.Group("/api")
+	needToken := router.Group("/api")
+
+	needToken.GET("/users", controller.GetUsers)
+	needToken.GET("/guildevent", controller.GetGuildEvent)
 
 	// Apply the TokenAuthMiddleware to all routes in this group
-	api.Use(middleware.TokenAuthMiddleware(&appData))
+	needToken.Use(middleware.TokenAuthMiddleware(&appData))
 
 	// Define the routes in this group
-	api.GET("/users", controller.GetUsers)
-	api.POST("/users", controller.PostUsers)
-	api.GET("/diana/:user", controller.GetDiana)
-	api.GET("/dungeons/:user", controller.GetDungeonsData)
+	needToken.POST("/users", controller.PostUsers)
+	needToken.GET("/diana/:user", controller.GetDiana)
+	needToken.GET("/dungeons/:user", controller.GetDungeonsData)
 
-	api.POST("/guildevent", controller.CreateGuildEvent)
-	api.GET("/guildevent", controller.GetGuildEvent)
+	needToken.POST("/guildevent", controller.CreateGuildEvent)
 
 	if err := router.Run(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
@@ -68,14 +67,12 @@ func main() {
 }
 
 func startDataFetcher() {
-	/*
-		now := time.Now()
-		nextHour := now.Truncate(time.Hour).Add(time.Hour)
-		timeUntilNextHour := time.Until(nextHour)
+	now := time.Now()
+	nextHour := now.Truncate(time.Hour).Add(time.Hour)
+	timeUntilNextHour := time.Until(nextHour)
 
-		// Sleep until the next hour
-		time.Sleep(timeUntilNextHour)
-	*/
+	// Sleep until the next hour
+	time.Sleep(timeUntilNextHour)
 
 	// Start the ticker
 	ticker := time.NewTicker(1 * time.Hour)
@@ -84,80 +81,7 @@ func startDataFetcher() {
 	for {
 		select {
 		case <-ticker.C:
-			log.Println("Fetching data")
-			dianaData, dungeonsData := FetchData(appData.Users)
-
-			session := appData.Engine.NewSession()
-			defer session.Close()
-
-			// Begin transaction
-			if err := session.Begin(); err != nil {
-				log.Printf("Failed to start transaction: %v", err)
-				return
-			}
-
-			// InserUsert data for Diana
-			if len(dianaData) > 0 {
-				if err := insertData(session, dianaData, "Diana"); err != nil {
-					log.Printf("Error inserting Diana data: %v", err)
-					_ = session.Rollback()
-					continue
-				}
-			}
-
-			// Insert data for Dungeons
-			if len(dungeonsData) > 0 {
-				if err := insertData(session, dungeonsData, "Dungeons"); err != nil {
-					log.Printf("Error inserting Dungeons data: %v", err)
-					_ = session.Rollback()
-					continue
-				}
-			}
-
-			// Commit transaction
-			if err := session.Commit(); err != nil {
-				log.Printf("Failed to commit transaction: %v", err)
-			} else {
-				log.Printf("Data inserted successfully for all users (%v)!", len(appData.Users))
-			}
+			utils.InsertPlayerData(appData.Engine, appData.Users)
 		}
 	}
-}
-
-// insertData is a helper function to insert data into the database and log any errors
-func insertData(session *xorm.Session, data interface{}, dataType string) error {
-	_, err := session.Insert(data)
-	if err != nil {
-		return fmt.Errorf("failed to insert %s data: %v", dataType, err)
-	}
-	log.Printf("%s data inserted successfully!", dataType)
-	return nil
-}
-
-func FetchData(users []app.User) ([]app.DianaData, []app.DungeonsData) {
-	outDiana := make([]app.DianaData, 0)
-	outDungeons := make([]app.DungeonsData, 0)
-
-	for _, user := range users {
-		if !user.FetchData {
-			continue
-		}
-
-		profile := user.ActiveProfileUUID
-
-		data, err := utils.FetchPlayerData(user.Id, profile)
-		if err != nil {
-			log.Println("Failed to fetch api: ", err)
-		}
-
-		dianaData := utils.IntoDianaData(*data, user.Id, user.Id)
-		dianaData.FetchTime = time.Now().Truncate(time.Hour)
-		outDiana = append(outDiana, dianaData)
-
-		dungeonsData := utils.IntoDungeonsData(*data, user.Id, user.Id)
-		dungeonsData.FetchTime = time.Now().Truncate(time.Hour)
-		outDungeons = append(outDungeons, dungeonsData)
-
-	}
-	return outDiana, outDungeons
 }

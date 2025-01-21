@@ -15,9 +15,7 @@ import (
 )
 
 func (con *Controller) CreateGuildEvent(c *gin.Context) {
-	// TODO check if player is the db.
-	// TODO check if guild event is already created.
-
+	// Define the request struct
 	var request struct {
 		Users     []string           `json:"users" binding:"required"`
 		Duration  int                `json:"duration" binding:"required"`
@@ -73,6 +71,19 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 		return
 	}
 
+	missingUsers, err := checkForMissingUsers(session, guildEvent.Users)
+	if err != nil {
+		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to check for missing users")
+		session.Rollback()
+		return
+	}
+
+	if len(missingUsers) > 0 {
+		con.ErrorResponseWithUUID(c, http.StatusNotFound, nil, fmt.Sprintf("Missing users: %v", missingUsers))
+		session.Rollback()
+		return
+	}
+
 	_, err = session.Insert(&guildEvent)
 	if err != nil {
 		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to insert guild event")
@@ -87,6 +98,30 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 		"message":  "Guild event created successfully",
 		"guild id": guildEvent.Id,
 	})
+}
+
+func checkForMissingUsers(session *xorm.Session, users []string) ([]string, error) {
+	// Query the database to check which user IDs exist
+	var existingUsers []app.User
+	err := session.In("id", users).Find(&existingUsers)
+	if err != nil {
+		log.Fatalf("Failed to fetch users from the database: %v", err)
+	}
+
+	// Check for missing IDs
+	existingIDs := make(map[string]bool)
+	for _, user := range existingUsers {
+		existingIDs[user.Id] = true
+	}
+
+	var missingIDs []string
+	for _, id := range users {
+		if !existingIDs[id] {
+			missingIDs = append(missingIDs, id)
+		}
+	}
+
+	return missingIDs, nil
 }
 
 func (con *Controller) GetGuildEvent(c *gin.Context) {
