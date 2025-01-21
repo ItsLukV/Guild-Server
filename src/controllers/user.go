@@ -20,7 +20,7 @@ func (con *Controller) PostUsers(c *gin.Context) {
 	// Define a temporary struct for binding only the Uuid field
 	var input struct {
 		Uuid             string `json:"uuid" binding:"required"`
-		DiscordSnowflake string `json:"discord_username" binding:"required"`
+		DiscordSnowflake string `json:"discord_snowflake" binding:"required"`
 	}
 
 	// Bind JSON input to the input struct
