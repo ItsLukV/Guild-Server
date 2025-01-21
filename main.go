@@ -51,7 +51,7 @@ func main() {
 	api := router.Group("/api")
 
 	api.GET("/users", controller.GetUsers)
-	api.GET("/user", controller.GetUserData)
+	api.GET("/user", controller.GetUser)
 	api.GET("/guildevent", controller.GetGuildEvent)
 	api.GET("/guildevents", controller.GetGuildEvents)
 

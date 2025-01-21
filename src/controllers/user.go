@@ -64,7 +64,7 @@ func (con *Controller) PostUsers(c *gin.Context) {
 	})
 }
 
-func (con *Controller) GetUserData(c *gin.Context) {
+func (con *Controller) GetUser(c *gin.Context) {
 	session := con.AppData.Engine.NewSession()
 	defer session.Close()
 
@@ -112,8 +112,8 @@ func (con *Controller) GetUserData(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user":         user,
-		"dianaData":    playerDianaData,
-		"dungeonsData": playerDungeonsData,
+		"user":          user,
+		"diana_data":    playerDianaData,
+		"dungeons_data": playerDungeonsData,
 	})
 }

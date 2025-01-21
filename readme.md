@@ -11,7 +11,7 @@ REST api for tracking skyblock player data.
 	* Mythological Creatures kills
 	* Borrows - splint in treasure and combat burrows
 
-## end points
+## End points
 There is 2 types of end points, public and non public
 ### Public
 #### GET `/api/users`
@@ -23,9 +23,25 @@ This returns all users in the system
 |id    |string|
 |active_profile_UUID|string|
 |FetchData|bool|
+
+#### GET `/api/user`
+
+|Name|Type|
+|-|-|
+|id|string|
+
+
+|Name|Type|
+|-|-|
+|user|User|
+|diana_data|DianaData|
+|dungeons_data|DungeonsData|
+
 #### GET `/api/guildevent`
 This takes a guild event id as a parameter and returns a specific information about that event.
+
 |Name|Type|
+|-|-|
 |id|string|
 
 **Response:**
@@ -37,6 +53,7 @@ This takes a guild event id as a parameter and returns a specific information ab
 |type|string("dungeons" or "diana")|
 |users_ids|[]string|
 |event_data|GuildEventData|
+
 #### GET `/api/guildevents`
 This returns a list of the table:
 |Name|Type|
@@ -51,9 +68,13 @@ This returns a list of the table:
 ##### This returns all guild events in the system
 ### Non Public
 #### POST `/api/users`
+**Property:**
+
 |Name|Type|Required|
 |-|-|-|
 |uuid|string|true|
+
+**Response:**
 
 |Name|Type|
 |-|-|
