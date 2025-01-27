@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/ItsLukV/Guild-Server/src/app"
+	"github.com/ItsLukV/Guild-Server/src/model"
 	"github.com/ItsLukV/Guild-Server/src/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +30,7 @@ func (con *Controller) PostUsers(c *gin.Context) {
 	}
 
 	// Create a new User instance with only the Uuid field
-	newUser := app.User{
+	newUser := model.User{
 		Id:               input.Uuid,
 		DiscordSnowflake: input.DiscordSnowflake,
 		FetchData:        true,
@@ -52,7 +52,7 @@ func (con *Controller) PostUsers(c *gin.Context) {
 	}
 
 	// Insert player data for the new user
-	utils.InsertPlayerData(con.AppData.Engine, []app.User{newUser})
+	utils.InsertPlayerData(con.AppData.Engine, []model.User{newUser})
 
 	// Add the new user to the Users slice
 	con.AppData.Users = append(con.AppData.Users, newUser)
@@ -80,7 +80,7 @@ func (con *Controller) GetUser(c *gin.Context) {
 		return
 	}
 
-	user := app.User{Id: id}
+	user := model.User{Id: id}
 
 	// Checking if guild exits
 	has, err := session.Get(&user)
@@ -96,8 +96,8 @@ func (con *Controller) GetUser(c *gin.Context) {
 		return
 	}
 
-	playerDianaData := app.DianaData{UserId: user.Id}
-	playerDungeonsData := app.DungeonsData{UserId: user.Id}
+	playerDianaData := model.DianaData{UserId: user.Id}
+	playerDungeonsData := model.DungeonsData{UserId: user.Id}
 
 	_, err = con.AppData.Engine.OrderBy("fetch_time").Get(&playerDianaData)
 	if err != nil {

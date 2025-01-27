@@ -5,11 +5,12 @@ import (
 	"log"
 	"os"
 
+	"github.com/ItsLukV/Guild-Server/src/model"
 	"xorm.io/xorm"
 	"xorm.io/xorm/names"
 )
 
-func SyncDatabase(users *[]User) (*xorm.Engine, error) {
+func SyncDatabase(users *[]model.User) (*xorm.Engine, error) {
 
 	// Initialize connection string
 	connStr := fmt.Sprintf(
@@ -33,34 +34,16 @@ func SyncDatabase(users *[]User) (*xorm.Engine, error) {
 	engine.SetMapper(names.SnakeMapper{})
 
 	// Sync the table structure
-	if err := engine.Sync(new(User), new(DianaData), new(DungeonsData), new(GuildEvent)); err != nil {
+	if err := engine.Sync(
+		new(model.APIToken),
+		new(model.User),
+		new(model.DianaData),
+		new(model.DungeonsData),
+		new(model.GuildEvent),
+		new(model.MiningData),
+	); err != nil {
 		log.Fatalf("Failed to sync database schema: %v", err)
 		return nil, err
-	}
-
-	// Add foreign key only if it doesn't already exist
-	constraintCheckQuery := `
-	SELECT constraint_name
-	FROM information_schema.table_constraints
-	WHERE table_name = 'diana_data' AND constraint_name = 'fk_user';`
-	existingConstraint := make([]string, 0)
-
-	if err := engine.SQL(constraintCheckQuery).Find(&existingConstraint); err != nil {
-		log.Printf("Failed to check existing constraints: %v", err)
-		return nil, err
-	}
-
-	if len(existingConstraint) == 0 {
-		_, err = engine.Exec(`
-		ALTER TABLE diana_data
-		ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-		ALTER TABLE dungeons_data
-		ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-		`)
-		if err != nil {
-			log.Printf("Failed to add foreign key constraint: %v", err)
-			return nil, err
-		}
 	}
 
 	// Fetch users from the database

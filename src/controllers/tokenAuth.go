@@ -1,20 +1,21 @@
-package middleware
+package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
-	"github.com/ItsLukV/Guild-Server/src/app"
+	"github.com/ItsLukV/Guild-Server/src/model"
 	"github.com/gin-gonic/gin"
 )
 
-func TokenAuthMiddleware(appData *app.App) gin.HandlerFunc {
+func (con *Controller) TokenAuthMiddleware(appData *model.App) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Retrieve the token from the query string (e.g., ?token=<value>)
 		service := c.Param("service")
 
 		// Use ValidateToken to check if the token is valid
-		token, valid := ValidateToken(c, appData, service)
+		token, valid := con.ValidateToken(c, appData, service)
 		if !valid {
 			c.Abort() // Stop processing the request if validation fails
 			return
@@ -25,7 +26,7 @@ func TokenAuthMiddleware(appData *app.App) gin.HandlerFunc {
 	}
 }
 
-func ValidateToken(ctx *gin.Context, appData *app.App, service string) (string, bool) {
+func (c *Controller) ValidateToken(ctx *gin.Context, appData *model.App, service string) (string, bool) {
 
 	defaultAdminToken := os.Getenv("DEFAULT_ADMIN_TOKEN")
 
@@ -34,7 +35,7 @@ func ValidateToken(ctx *gin.Context, appData *app.App, service string) (string, 
 
 	// If the token is empty, return an error
 	if token == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Token is required"})
+		c.ErrorResponseWithUUID(ctx, http.StatusBadRequest, fmt.Errorf("token is required"), "Token is empty")
 		return "", false
 	}
 
@@ -47,7 +48,7 @@ func ValidateToken(ctx *gin.Context, appData *app.App, service string) (string, 
 	// Retrieve the stored token for the given service
 	storedToken, err := appData.GetToken(service)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Token not found"})
+		c.ErrorResponseWithUUID(ctx, http.StatusInternalServerError, err, "Token not found")
 		return "", false
 	}
 

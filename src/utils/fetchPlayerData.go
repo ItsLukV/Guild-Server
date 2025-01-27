@@ -5,11 +5,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/ItsLukV/Guild-Server/src/app"
+	"github.com/ItsLukV/Guild-Server/src/model"
 	"xorm.io/xorm"
 )
 
-func InsertPlayerData(engine *xorm.Engine, users []app.User) {
+func InsertPlayerData(engine *xorm.Engine, users []model.User) {
 	log.Println("Fetching data")
 
 	// Begin transaction
@@ -20,36 +20,32 @@ func InsertPlayerData(engine *xorm.Engine, users []app.User) {
 		return
 	}
 
-	var dianaData []app.DianaData
-	var dungeonsData []app.DungeonsData
+	data := make(map[string][]model.GuildEventData)
+
 	for _, user := range users {
 		if !user.FetchData {
 			continue
 		}
-		dianaPlayerData, dungeonsPlayerData := FetchData(user)
-		if !hasPlayerData[app.DianaData](engine.NewSession(), user) {
-			dianaData = append(dianaData, dianaPlayerData)
+		dianaPlayerData, dungeonsPlayerData, miningPlayerData := FetchData(user)
+		if !hasPlayerData[model.DianaData](engine.NewSession(), user) {
+			data["diana"] = append(data["diana"], dianaPlayerData)
 		}
-		if !hasPlayerData[app.DungeonsData](engine.NewSession(), user) {
-			dungeonsData = append(dungeonsData, dungeonsPlayerData)
+		if !hasPlayerData[model.DungeonsData](engine.NewSession(), user) {
+			data["dungeons"] = append(data["dungeons"], dungeonsPlayerData)
 		}
-	}
-
-	// Insert data for Diana
-	if len(dianaData) > 0 {
-		if err := insertData(session, dianaData, "Diana"); err != nil {
-			log.Printf("Error inserting Diana data: %v", err)
-			_ = session.Rollback()
-			return
+		if !hasPlayerData[model.MiningData](engine.NewSession(), user) {
+			data["mining"] = append(data["mining"], miningPlayerData)
 		}
 	}
 
-	// Insert data for Dungeons
-	if len(dungeonsData) > 0 {
-		if err := insertData(session, dungeonsData, "Dungeons"); err != nil {
-			log.Printf("Error inserting Dungeons data: %v", err)
-			_ = session.Rollback()
-			return
+	for name, playerData := range data {
+		// Insert data for Diana
+		if len(playerData) > 0 {
+			if err := insertData(session, playerData, "Diana"); err != nil {
+				log.Printf("Error inserting %s data: %v", name, err)
+				_ = session.Rollback()
+				return
+			}
 		}
 	}
 
@@ -72,7 +68,7 @@ func insertData(session *xorm.Session, data interface{}, dataType string) error 
 	return nil
 }
 
-func FetchData(user app.User) (app.DianaData, app.DungeonsData) {
+func FetchData(user model.User) (model.DianaData, model.DungeonsData, model.MiningData) {
 	profile := user.ActiveProfileUUID
 
 	data, err := FetchPlayerData(user.Id, profile)
@@ -86,10 +82,13 @@ func FetchData(user app.User) (app.DianaData, app.DungeonsData) {
 	dungeonsData := IntoDungeonsData(*data, user.Id)
 	dungeonsData.FetchTime = time.Now().Truncate(time.Hour)
 
-	return dianaData, dungeonsData
+	miningData := IntoMiningData(*data, user.Id)
+	miningData.FetchTime = time.Now().Truncate(time.Hour)
+
+	return dianaData, dungeonsData, miningData
 }
 
-func hasPlayerData[T app.GuildEventData](session *xorm.Session, user app.User) bool {
+func hasPlayerData[T model.GuildEventData](session *xorm.Session, user model.User) bool {
 	playerData := new(T)
 	currentTime := time.Now().Truncate(time.Hour)
 
@@ -98,6 +97,6 @@ func hasPlayerData[T app.GuildEventData](session *xorm.Session, user app.User) b
 		log.Printf("Error fetching player data: %v", err)
 		return false
 	}
-
+	session.Close()
 	return found
 }
