@@ -99,13 +99,13 @@ func (con *Controller) GetUser(c *gin.Context) {
 	playerDianaData := model.DianaData{UserId: user.Id}
 	playerDungeonsData := model.DungeonsData{UserId: user.Id}
 
-	_, err = con.AppData.Engine.OrderBy("fetch_time").Get(&playerDianaData)
+	_, err = con.AppData.Engine.OrderBy("fetch_time desc").Get(&playerDianaData)
 	if err != nil {
 		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to query player data")
 		return
 	}
 
-	_, err = con.AppData.Engine.OrderBy("fetch_time").Get(&playerDungeonsData)
+	_, err = con.AppData.Engine.OrderBy("fetch_time desc").Get(&playerDungeonsData)
 	if err != nil {
 		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to query player data")
 		return
