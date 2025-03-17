@@ -8,7 +8,7 @@ import (
 
 	"slices"
 
-	"github.com/ItsLukV/Guild-Server/src/app"
+	"github.com/ItsLukV/Guild-Server/src/model"
 	"github.com/gin-gonic/gin"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"xorm.io/xorm"
@@ -17,11 +17,11 @@ import (
 func (con *Controller) CreateGuildEvent(c *gin.Context) {
 	// Define the request struct
 	var request struct {
-		Users     []string           `json:"users" binding:"required"`
-		Duration  int                `json:"duration" binding:"required"`
-		Type      app.GuildEventType `json:"type" binding:"required"`
-		StartTime time.Time          `json:"start_time"`
-		IsHidden  bool               `json:"is_hidden"`
+		Users     []string             `json:"users" binding:"required"`
+		Duration  int                  `json:"duration" binding:"required"`
+		Type      model.GuildEventType `json:"type" binding:"required"`
+		StartTime time.Time            `json:"start_time"`
+		IsHidden  bool                 `json:"is_hidden"`
 	}
 
 	// Bind JSON input to the GuildEvent struct
@@ -31,7 +31,7 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 	}
 
 	// Check if guild has a known event type
-	guildTypes := []app.GuildEventType{app.Dungeons, app.Diana}
+	guildTypes := []model.GuildEventType{model.Dungeons, model.Diana, model.Mining}
 
 	if !slices.Contains(guildTypes, request.Type) {
 		con.ErrorResponseWithUUID(c, http.StatusBadRequest, nil, fmt.Sprintf("Invalid guild event type: %s", request.Type))
@@ -54,7 +54,7 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 	}
 
 	// Create event
-	guildEvent := app.GuildEvent{
+	guildEvent := model.GuildEvent{
 		Id:        id,
 		Users:     request.Users,
 		Duration:  request.Duration,
@@ -104,7 +104,7 @@ func (con *Controller) CreateGuildEvent(c *gin.Context) {
 
 func checkForMissingUsers(session *xorm.Session, users []string) ([]string, error) {
 	// Query the database to check which user IDs exist
-	var existingUsers []app.User
+	var existingUsers []model.User
 	err := session.In("id", users).Find(&existingUsers)
 	if err != nil {
 		log.Fatalf("Failed to fetch users from the database: %v", err)
@@ -128,12 +128,12 @@ func checkForMissingUsers(session *xorm.Session, users []string) ([]string, erro
 
 func (con *Controller) GetGuildEvent(c *gin.Context) {
 	type GuildEventResponse struct {
-		EventID   string               `json:"id"`
-		StartTime time.Time            `json:"start_time"`
-		Duration  int                  `json:"duration"`
-		Type      app.GuildEventType   `json:"type"`
-		UserIDs   []string             `json:"users"`
-		EventData []app.GuildEventData `json:"event_data"`
+		EventID   string                 `json:"id"`
+		StartTime time.Time              `json:"start_time"`
+		Duration  int                    `json:"duration"`
+		Type      model.GuildEventType   `json:"type"`
+		UserIDs   []string               `json:"users"`
+		EventData []model.GuildEventData `json:"event_data"`
 	}
 
 	session := con.AppData.Engine.NewSession()
@@ -141,7 +141,7 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 
 	// fetch the id of guild event
 	id := c.Query("id")
-	event := app.GuildEvent{Id: id}
+	event := model.GuildEvent{Id: id}
 
 	if id == "" {
 		con.ErrorResponseWithUUID(c, http.StatusBadRequest, nil, "Missing guild event ID")
@@ -167,7 +167,7 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 		return
 	}
 
-	var guildData []app.GuildEventData
+	var guildData []model.GuildEventData
 
 	if event.IsHidden {
 		// Return success response
@@ -177,17 +177,19 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 			Duration:  event.Duration,
 			Type:      event.Type,
 			UserIDs:   event.Users,
-			EventData: []app.GuildEventData{},
+			EventData: []model.GuildEventData{},
 		}
 
 		c.JSON(http.StatusOK, guildEventResponse)
 		return
 	}
 
+	println(event.Type)
+
 	// Getting guild data
 	switch event.Type {
-	case app.Dungeons:
-		dungeonsData, err := fetchPlayerData[app.DungeonsData](session, event)
+	case model.Dungeons:
+		dungeonsData, err := fetchPlayerData[model.DungeonsData](session, event)
 		if err != nil {
 			con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch dungeons data")
 			session.Rollback()
@@ -197,15 +199,26 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 		for _, data := range dungeonsData {
 			guildData = append(guildData, data)
 		}
-	case app.Diana:
-		dianaData, err := fetchPlayerData[app.DianaData](session, event)
+	case model.Diana:
+		dianaData, err := fetchPlayerData[model.DianaData](session, event)
 		if err != nil {
-			con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch Diana data")
+			con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch miana data")
 			session.Rollback()
 			return
 		}
 
 		for _, data := range dianaData {
+			guildData = append(guildData, data)
+		}
+	case model.Mining:
+		Data, err := fetchPlayerData[model.MiningData](session, event)
+		if err != nil {
+			con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch mining data")
+			session.Rollback()
+			return
+		}
+
+		for _, data := range Data {
 			guildData = append(guildData, data)
 		}
 	}
@@ -225,17 +238,24 @@ func (con *Controller) GetGuildEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, guildEventResponse)
 }
 
-func fetchPlayerData[T app.GuildEventData](session *xorm.Session, event app.GuildEvent) ([]T, error) {
-	records := make([]T, 0)
+func fetchPlayerData[T model.GuildEventData](session *xorm.Session, event model.GuildEvent) ([]T, error) {
+	var records []T
+	// records := make([]T, 0)
+	endTime := event.StartTime.Add(time.Duration(event.Duration) * time.Hour)
+
+	log.Println("endTime", endTime.String())
+
+	log.Println("0", records)
 
 	var err error
+
 	// Query for all players at the specific FetchTime.
-	err = session.
-		Where("fetch_time = ?", event.StartTime.Add(time.Duration(event.Duration)*time.Hour)).
-		Find(&records)
+	err = session.Where("fetch_time = ?", endTime).In("user_id", event.Users).Find(&records)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query records for specific FetchTime: %v", err)
 	}
+
+	log.Println("1", records)
 
 	// If no records are found for the specific FetchTime, fetch the latest records for all players.
 	if len(records) == 0 {
@@ -249,18 +269,34 @@ func fetchPlayerData[T app.GuildEventData](session *xorm.Session, event app.Guil
                 FROM %s
                 GROUP BY user_id
             ) AS latest
-            ON d.user_id = latest.user_id AND d.fetch_time = latest.LatestFetchTime
+            ON d.user_id = latest.user_id AND d.fetch_time = latest.LatestFetchTime;
         `, tableName, tableName)
 
-		err = session.SQL(query).Find(&records)
+		var recordsCopy []T
+
+		err = session.SQL(query).Find(&recordsCopy)
 		if err != nil {
 			return nil, fmt.Errorf("failed to query latest records: %v", err)
 		}
+
+		log.Println("recordsCopy", recordsCopy)
+
+		for _, eventData := range recordsCopy {
+			log.Println("eventData", eventData)
+			log.Println("bool:", slices.Contains(event.Users, eventData.GetUserID()))
+			log.Println("----")
+			log.Println("users:", event.Users)
+			log.Println("user:", eventData.GetUserID())
+			if slices.Contains(event.Users, eventData.GetUserID()) {
+				records = append(records, eventData)
+			}
+		}
 	}
+	log.Println("2", records)
 
 	// Get the records guild event start
 	startRecords := make([]T, 0)
-	err = session.Where("DATE_TRUNC('hour', fetch_time) = ?", event.StartTime).Find(&startRecords)
+	err = session.Where("fetch_time = ?", event.StartTime).In("user_id", event.Users).Find(&startRecords)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query records for specific FetchTime: %v", err)
@@ -272,8 +308,6 @@ func fetchPlayerData[T app.GuildEventData](session *xorm.Session, event app.Guil
 
 	// Subtract the records at the start time from the latest records to get the event data
 	for i, record := range records {
-		log.Println("Record: ", record)
-		log.Println("StartRecord: ", startRecords[i])
 		startRecord := startRecords[i]
 		subtractedRecord, err := record.Subtract(startRecord)
 		if err != nil {
@@ -288,6 +322,9 @@ func fetchPlayerData[T app.GuildEventData](session *xorm.Session, event app.Guil
 		}
 	}
 
+	log.Println("3", len(records))
+	log.Println("3", records)
+
 	return records, nil
 }
 
@@ -301,7 +338,7 @@ func (con *Controller) GetGuildEvents(c *gin.Context) {
 		return
 	}
 
-	var guildEvents []app.GuildEvent
+	var guildEvents []model.GuildEvent
 	err := session.Find(&guildEvents)
 	if err != nil {
 		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to fetch guild events")
@@ -311,7 +348,7 @@ func (con *Controller) GetGuildEvents(c *gin.Context) {
 	session.Commit()
 
 	if len(guildEvents) == 0 {
-		c.JSON(http.StatusOK, make([]app.GuildEvent, 0))
+		c.JSON(http.StatusOK, make([]model.GuildEvent, 0))
 		return
 	}
 

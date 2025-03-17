@@ -2,19 +2,21 @@ package main
 
 import (
 	"log"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/ItsLukV/Guild-Server/src/app"
 	"github.com/ItsLukV/Guild-Server/src/controllers"
-	"github.com/ItsLukV/Guild-Server/src/middleware"
+	"github.com/ItsLukV/Guild-Server/src/model"
 	"github.com/ItsLukV/Guild-Server/src/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
-var appData = app.App{
-	Users: make([]app.User, 0),
+var appData = model.App{
+	Users: make([]model.User, 0),
 }
 
 var controller controllers.Controller
@@ -43,8 +45,8 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 
-	router.LoadHTMLGlob("templates/*")
-	//router.LoadHTMLFiles("templates/template1.html", "templates/template2.html")
+	// router.LoadHTMLGlob("templates/*")
+	router.LoadHTMLFiles("public/index.tmpl")
 
 	router.GET("/", controller.GetDefault)
 
@@ -56,7 +58,7 @@ func main() {
 	api.GET("/guildevents", controller.GetGuildEvents)
 
 	// Apply the TokenAuthMiddleware to all routes in this group
-	api.Use(middleware.TokenAuthMiddleware(&appData))
+	api.Use(controller.TokenAuthMiddleware(&appData))
 
 	// Define the routes in this group
 	api.POST("/users", controller.PostUsers)
@@ -71,11 +73,18 @@ func main() {
 }
 
 func startDataFetcher() {
+
 	utils.InsertPlayerData(appData.Engine, appData.Users)
 
 	now := time.Now()
 
-	updateTime := time.Hour
+	var updateTime time.Duration
+	number, err := strconv.Atoi(os.Getenv("UPDATE_TIME"))
+	if os.Getenv("UPDATE_TIME") == "" || err != nil {
+		updateTime = time.Hour
+	} else {
+		updateTime = time.Minute * time.Duration(number)
+	}
 
 	nextHour := now.Truncate(updateTime).Add(updateTime)
 	timeUntilNextHour := time.Until(nextHour)

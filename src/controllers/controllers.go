@@ -5,17 +5,17 @@ import (
 	"net/http"
 	"runtime"
 
-	"github.com/ItsLukV/Guild-Server/src/app"
+	"github.com/ItsLukV/Guild-Server/src/model"
 	"github.com/gin-gonic/gin"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"golang.org/x/exp/rand"
 )
 
 type Controller struct {
-	AppData *app.App
+	AppData *model.App
 }
 
-func NewController(appData *app.App) *Controller {
+func NewController(appData *model.App) *Controller {
 	return &Controller{AppData: appData}
 }
 
