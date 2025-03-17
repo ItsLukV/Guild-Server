@@ -274,11 +274,6 @@ func fetchPlayerData[T model.GuildEventData](session *xorm.Session, event model.
 		}
 
 		for _, eventData := range recordsCopy {
-			log.Println("eventData", eventData)
-			log.Println("bool:", slices.Contains(event.Users, eventData.GetUserID()))
-			log.Println("----")
-			log.Println("users:", event.Users)
-			log.Println("user:", eventData.GetUserID())
 			if slices.Contains(event.Users, eventData.GetUserID()) {
 				records = append(records, eventData)
 			}
