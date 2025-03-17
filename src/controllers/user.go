@@ -98,6 +98,7 @@ func (con *Controller) GetUser(c *gin.Context) {
 
 	playerDianaData := model.DianaData{UserId: user.Id}
 	playerDungeonsData := model.DungeonsData{UserId: user.Id}
+	playerMiningData := model.MiningData{UserId: user.Id}
 
 	_, err = con.AppData.Engine.OrderBy("fetch_time desc").Get(&playerDianaData)
 	if err != nil {
@@ -115,5 +116,6 @@ func (con *Controller) GetUser(c *gin.Context) {
 		"user":          user,
 		"diana_data":    playerDianaData,
 		"dungeons_data": playerDungeonsData,
+		"mining_data":   playerMiningData,
 	})
 }
