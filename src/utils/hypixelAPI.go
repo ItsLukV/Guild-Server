@@ -616,6 +616,7 @@ func IntoMiningData(data SkyblockPlayerData, userId string) model.MiningData {
 	miningCore := miningApiData.MiningCore
 	collection := miningApiData.Collection
 	return model.MiningData{
+		UserId:         userId,
 		Mineshaft:      glaciteData.MineshaftsEntered,
 		FossilDust:     float32(glaciteData.FossilDust),
 		TungstenCorpse: glaciteData.CorpsesLooted.Tungsten,

@@ -35,13 +35,14 @@ func InsertPlayerData(engine *xorm.Engine, users []model.User) {
 		}
 		if !hasPlayerData[model.MiningData](engine.NewSession(), user) {
 			data["mining"] = append(data["mining"], miningPlayerData)
+			log.Println(data["mining"])
 		}
 	}
 
 	for name, playerData := range data {
 		// Insert data for Diana
 		if len(playerData) > 0 {
-			if err := insertData(session, playerData, "Diana"); err != nil {
+			if err := insertData(session, playerData); err != nil {
 				log.Printf("Error inserting %s data: %v", name, err)
 				_ = session.Rollback()
 				return
@@ -59,12 +60,12 @@ func InsertPlayerData(engine *xorm.Engine, users []model.User) {
 }
 
 // insertData is a helper function to insert data into the database and log any errors
-func insertData(session *xorm.Session, data interface{}, dataType string) error {
+func insertData(session *xorm.Session, data interface{}) error {
 	_, err := session.Insert(data)
 	if err != nil {
-		return fmt.Errorf("failed to insert %s data: %v", dataType, err)
+		return fmt.Errorf("failed to insert data: %v", err)
 	}
-	log.Printf("%s data inserted successfully!", dataType)
+	log.Println("Data inserted successfully!")
 	return nil
 }
 
