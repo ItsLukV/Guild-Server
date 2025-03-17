@@ -74,8 +74,6 @@ func main() {
 
 func startDataFetcher() {
 
-	return
-
 	utils.InsertPlayerData(appData.Engine, appData.Users)
 
 	now := time.Now()
