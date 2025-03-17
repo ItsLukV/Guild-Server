@@ -243,10 +243,6 @@ func fetchPlayerData[T model.GuildEventData](session *xorm.Session, event model.
 	// records := make([]T, 0)
 	endTime := event.StartTime.Add(time.Duration(event.Duration) * time.Hour)
 
-	log.Println("endTime", endTime.String())
-
-	log.Println("0", records)
-
 	var err error
 
 	// Query for all players at the specific FetchTime.
@@ -254,8 +250,6 @@ func fetchPlayerData[T model.GuildEventData](session *xorm.Session, event model.
 	if err != nil {
 		return nil, fmt.Errorf("failed to query records for specific FetchTime: %v", err)
 	}
-
-	log.Println("1", records)
 
 	// If no records are found for the specific FetchTime, fetch the latest records for all players.
 	if len(records) == 0 {
@@ -279,20 +273,12 @@ func fetchPlayerData[T model.GuildEventData](session *xorm.Session, event model.
 			return nil, fmt.Errorf("failed to query latest records: %v", err)
 		}
 
-		log.Println("recordsCopy", recordsCopy)
-
 		for _, eventData := range recordsCopy {
-			log.Println("eventData", eventData)
-			log.Println("bool:", slices.Contains(event.Users, eventData.GetUserID()))
-			log.Println("----")
-			log.Println("users:", event.Users)
-			log.Println("user:", eventData.GetUserID())
 			if slices.Contains(event.Users, eventData.GetUserID()) {
 				records = append(records, eventData)
 			}
 		}
 	}
-	log.Println("2", records)
 
 	// Get the records guild event start
 	startRecords := make([]T, 0)
@@ -321,9 +307,6 @@ func fetchPlayerData[T model.GuildEventData](session *xorm.Session, event model.
 			return nil, fmt.Errorf("failed to assert the subtracted record as type T")
 		}
 	}
-
-	log.Println("3", len(records))
-	log.Println("3", records)
 
 	return records, nil
 }
