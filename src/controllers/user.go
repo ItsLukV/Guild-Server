@@ -112,6 +112,12 @@ func (con *Controller) GetUser(c *gin.Context) {
 		return
 	}
 
+	_, err = con.AppData.Engine.OrderBy("fetch_time desc").Get(&playerMiningData)
+	if err != nil {
+		con.ErrorResponseWithUUID(c, http.StatusInternalServerError, err, "Failed to query player data")
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"user":          user,
 		"diana_data":    playerDianaData,
