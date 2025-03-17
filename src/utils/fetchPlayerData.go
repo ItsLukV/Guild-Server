@@ -35,7 +35,6 @@ func InsertPlayerData(engine *xorm.Engine, users []model.User) {
 		}
 		if !hasPlayerData[model.MiningData](engine.NewSession(), user) {
 			data["mining"] = append(data["mining"], miningPlayerData)
-			log.Println(data["mining"])
 		}
 	}
 
