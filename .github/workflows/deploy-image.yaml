@@ -1,0 +1,60 @@
+name: Deploy to Production
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Repo
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Builder
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to DigitalOcean Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: registry.digitalocean.com
+          username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Build and Push to DigitalOcean Container Registry
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: |
+            registry.digitalocean.com/guild-docker/server:latest
+            registry.digitalocean.com/guild-docker/server:sha-${{ github.sha }}
+
+  deploy-api-1:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy api to DigitalOcean Droplet
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DO_API_HOST }}
+          username: root
+          key: ${{ secrets.DO_API_KEY }}
+          script: |
+            doctl registry login --expiry-seconds 180
+            docker pull registry.digitalocean.com/guild-docker/server:latest
+
+            docker stop server || true
+            docker rm server || true
+
+            echo "starting server instance..."
+            docker run -d \
+              --restart always \
+              --name server \
+              -e DISCORD_TOKEN="$DISCORD_TOKEN" \
+              -e HYPIXEL_API="$HYPIXEL_API" \
+              -e API_URL="$API_URL" \
+              -e API_TOKEN="$API_TOKEN" \
+              -e DEBUG="$DEBUG" \
+              registry.digitalocean.com/guild-docker/server:latest
