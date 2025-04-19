@@ -11,7 +11,6 @@ import (
 	"github.com/ItsLukV/Guild-Server/src/model"
 	"github.com/ItsLukV/Guild-Server/src/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -24,9 +23,11 @@ var controller controllers.Controller
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	// Load environment variables
-	if err := godotenv.Load(".env"); err != nil {
-		log.Println("Error loading .env file")
-	}
+	/*
+		if err := godotenv.Load(".env"); err != nil {
+			log.Println("Error loading .env file")
+		}
+	*/
 }
 
 func main() {
