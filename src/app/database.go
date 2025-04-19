@@ -23,7 +23,7 @@ func SyncDatabase(users *[]model.User) (*xorm.Engine, error) {
 		os.Getenv("DB_SSLMODE"),
 	)
 
-	println(connStr)
+	log.Println(connStr)
 
 	// Initialize XORM engine
 	engine, err := xorm.NewEngine("postgres", connStr)
