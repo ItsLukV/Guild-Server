@@ -42,6 +42,7 @@ jobs:
           username: root
           key: ${{ secrets.DO_API_KEY }}
           script: |
+            source ~/.bashrc
             doctl registry login --expiry-seconds 180
             docker pull registry.digitalocean.com/guild-docker/server:latest
 
