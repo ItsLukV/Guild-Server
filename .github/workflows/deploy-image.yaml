@@ -53,9 +53,14 @@ jobs:
             docker run -d \
               --restart always \
               --name server \
-              -e DISCORD_TOKEN="$DISCORD_TOKEN" \
+              -e GIN_MODE="$GIN_MODE" \
+              -e DB_HOST="$DB_HOST" \
+              -e DB_PORT="$DB_PORT" \
+              -e DB_USER="$DB_USER" \
+              -e DB_PASS="$DB_PASS" \
+              -e DB_NAME="$DB_NAME" \
+              -e DB_SSLMODE="$DB_SSLMODE" \
+              -e TZ="$TZ" \
               -e HYPIXEL_API="$HYPIXEL_API" \
-              -e API_URL="$API_URL" \
-              -e API_TOKEN="$API_TOKEN" \
               -e DEBUG="$DEBUG" \
               registry.digitalocean.com/guild-docker/server:latest
