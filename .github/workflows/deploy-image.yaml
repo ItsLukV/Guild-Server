@@ -42,21 +42,14 @@ jobs:
           username: root
           key: ${{ secrets.DO_API_KEY }}
           script: |
-            source ~/.bashrc
-            echo "=== Current Environment ==="
-            printenv
-            echo "=== DB Variables ==="
-            echo "DB_HOST: $DB_HOST"
-            echo "DB_PORT: $DB_PORT"
-            # Add other variables you need to check
-
-
-            source ~/.bashrc
             doctl registry login --expiry-seconds 180
             docker pull registry.digitalocean.com/guild-docker/server:latest
 
             docker stop server || true
             docker rm server || true
+
+            source ~/.bashrc
+            printenv
 
             echo "starting server instance..."
             docker run -d \
