@@ -21,7 +21,6 @@ COPY --from=builder /app/main .
 
 # Copy required directories
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/templates ./templates
 
 # Install CA certificates (needed for HTTPS requests)
 RUN apk add --no-cache ca-certificates
