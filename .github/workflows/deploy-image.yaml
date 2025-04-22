@@ -54,6 +54,7 @@ jobs:
             docker run -d \
               --restart always \
               --name server \
+              -p 8080:8080 \
               -e GIN_MODE="$GIN_MODE" \
               -e DB_HOST="$DB_HOST" \
               -e DB_PORT="$DB_PORT" \
