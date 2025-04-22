@@ -47,9 +47,8 @@ jobs:
 
             docker stop server || true
             docker rm server || true
-            cat ~/.bashrc
+
             source ~/.bashrc && echo "Sourced successfully" || echo "Failed to source"
-            printenv
 
             echo "starting server instance..."
             docker run -d \
