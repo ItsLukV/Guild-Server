@@ -66,7 +66,7 @@ func main() {
 
 	api.POST("/guildevent", controller.CreateGuildEvent)
 
-	if err := router.Run(":8080"); err != nil {
+	if err := router.Run("0.0.0.0:8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	} else {
 		log.Println("Server started successfully")
