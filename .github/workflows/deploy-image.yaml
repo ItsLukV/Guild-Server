@@ -48,7 +48,7 @@ jobs:
             docker stop server || true
             docker rm server || true
 
-            source ~/.bashrc
+            source ~/.bash_profile
             printenv
 
             echo "starting server instance..."
